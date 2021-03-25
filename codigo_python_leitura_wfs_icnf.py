@@ -7,8 +7,6 @@ Created on Mon Mar 22 18:13:38 2021
 """
 import pandas as pd
 import geopandas as geopd
-import os
-from time import process_time
 from owslib.wfs import WebFeatureService
 # a instalação do pyproj no conda tem erro: fazer pip3 install --force-reinstall pyproj para instalar através do pip3
 # também tive que instalar: conda install ruamel_yaml
