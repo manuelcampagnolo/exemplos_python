@@ -19,13 +19,9 @@ from requests import Request
 # test pyproj  # https://stackoverflow.com/questions/55390492/runtimeerror-bno-arguments-in-initialization-list
 pyproj.Proj("+init=epsg:3857")
 
-#C:\Users\mlc\OneDrive - Universidade de Lisboa\Documents\geomatica-sigdr-2020-2021\Trabalho_avaliacao\InvFlorNacional
-os.chdir("C:\\Users\\mlc\\OneDrive - Universidade de Lisboa\\Documents\\geomatica-sigdr-2020-2021\\Trabalho_avaliacao\\InvFlorNacional")
-os.getcwd()
-
 # URL for WFS backend
-url = "http://si.icnf.pt/wfs/rnap"
-url = "http://si.icnf.pt/wfs/ifn_2015"
+url = "http://si.icnf.pt/wfs/rnap" # areas protegidas
+url = "http://si.icnf.pt/wfs/ifn_2015" # inventário
 
 # See details about this particular WFS
 # -------------------------------------
