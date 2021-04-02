@@ -1,0 +1,33 @@
+library(sf)
+library(httr)
+#install.packages("Rcpp")
+#install.packages("ows4R")
+#install.packages("devtools")
+#require("devtools")
+#install_github("eblondel/ows4R")
+library(ows4R)
+
+WFS<-"http://si.icnf.pt/wfs/ardida_2018"
+
+regions_client <- WFSClient$new(WFS, serviceVersion = "2.0.0") 
+regions_client$getFeatureTypes(pretty = TRUE)
+url <- parse_url(wfs_regions)
+url$query <- list(service = "wfs",
+                  #version = "2.0.0", # optional
+                  request = "GetFeature",
+                  typename = "regions",
+                  srsName = "EPSG:4326"
+)
+request <- build_url(url)
+bel_regions <- read_sf(request) #Lambert2008
+
+
+FOLDER<-"C:\\Users\\mlc\\OneDrive - Universidade de Lisboa\\Documents\\geomatica-sigdr-2020-2021\\Trabalho_avaliacao\\InvFlorNacional"
+ifn<-<-st_read(file.path(FOLDER,"IFN_2015.gpkg"))
+
+FOLDER<-"Z:\\Dados_SIG_DR_etc\\Dados_SIG_DR_etc\\ICNF-areas-ardidas"
+aa<-st_read(file.path(FOLDER,"EFFIS_Sentinel_Landsat20180105.shp"))
+
+aa2018<-aa[grepl('2017', aa$FIREDATE),]
+
+aa_ifn<-st_intersection(ifn,aa)
