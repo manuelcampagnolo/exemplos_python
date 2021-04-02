@@ -1,0 +1,269 @@
+# started spyder from qgis_env window in conda
+
+# in OSGEo4W shell, I did execute py3_env
+
+# https://docs.qgis.org/3.16/en/docs/user_manual/processing/console.html
+from qgis.core import * # por omissão em QGIS
+import processing # por omissão em QGIS
+import os
+from urllib.parse import urljoin #path2uri
+import urllib.request
+import pandas as pd
+import matplotlib
+from PyQt5.QtCore import QVariant  # to use with attributes
+
+
+####################################  leitura dos dados
+
+FOLDER_IN='C:\\Users\\mlc\\OneDrive - Universidade de Lisboa\\Documents\\geomatica-sigdr-2020-2021\\praticas-geomatica-sigdr\\PyQGIS-Cascais\\CascaisIn'
+FOLDER_OUT='C:\\Users\\mlc\\OneDrive - Universidade de Lisboa\\Documents\\geomatica-sigdr-2020-2021\\praticas-geomatica-sigdr\\PyQGIS-Cascais\\CascaisOut'
+FOLDER_UP='C:\\Users\\mlc\\OneDrive - Universidade de Lisboa\\Documents\\geomatica-sigdr-2020-2021\\praticas-geomatica-sigdr\\PyQGIS-Cascais'
+
+# file names
+FN_DECLIVES = 'DecliveClasses.gpkg'
+FN_SOLOS = 'CartaSolos.gpkg'
+FN_USO = 'UsoSolo.gpkg'
+FN_RV = 'RedeViaria.gpkg'
+FN_LA = 'LAgua.gpkg'
+
+#table names
+TN_PRODS = 'ProdS.csv' # delimiter ;
+TN_PROTRV = 'ProtRV.csv' # delimiter ,
+
+# attribute names
+AN_USO_CODIGO='CODIGO' # usado em f'{AN_USO_CODIGO} IN ( \'M\' , \'Fm\' , \'A\' , \'Iv\')',\
+AN_PROTRV_DIST = 'protM' # distance for buffer
+
+# auxiliary functions
+# sep is the csv separator, e.g. sep=','  or sep=';'
+# this is necessary to read files with "file://...."
+def path2uri(folder,file,sep):
+    url_=urllib.request.pathname2url(os.path.join(folder,file))
+    params="?encoding=System&type=csv&delimiter="+sep+"&maxFields=10000&detectTypes=yes&geomType=none&subsetIndex=no&watchFile=no"
+    uri_=urljoin('file:', url_)+params
+    return uri_
+
+# Create project
+cascais = QgsProject.instance() # does not write to file
+cascais.write(os.path.join(FOLDER_UP,'cascais.qgs')) # write to file
+
+# Initialize project and OUT files
+# clear layers from project (if any)
+layers = cascais.mapLayers()
+for layer in layers:
+    cascais.removeMapLayer(layer)
+
+# delete files in FOLDER_OUT
+for f in os.listdir(FOLDER_OUT):
+    os.remove(os.path.join(FOLDER_OUT,f))
+
+########################################### import layers
+    
+# Import vector layer
+# vlayer = QgsVectorLayer(data_source, layer_name, provider_name)
+# the layer's name is "Declives"
+
+'''
+# alternative, checking validity:
+declives_layer = QgsVectorLayer(os.path.join(FOLDER_IN,FN_DECLIVES), "Declives", "ogr")
+if not declives_layer.isValid():
+    print("Layer failed to load!")
+else:
+    cascais.addMapLayer(declives_layer)
+'''
+
+# or using iface (QgisInterface)
+# the layer label is ""+filename (no extension)
+DecliveClasses = iface.addVectorLayer(os.path.join(FOLDER_IN,FN_DECLIVES),"", "ogr")
+CartaSolos = iface.addVectorLayer(os.path.join(FOLDER_IN,FN_SOLOS),"", "ogr")
+UsoSolo = iface.addVectorLayer(os.path.join(FOLDER_IN,FN_USO),"", "ogr")
+RedeViaria = iface.addVectorLayer(os.path.join(FOLDER_IN,FN_RV),"", "ogr")
+LAgua = iface.addVectorLayer(os.path.join(FOLDER_IN,FN_LA),"", "ogr")
+
+# remove layer from project
+# cascais.removeMapLayer(declives_layer_iface)
+
+# Import table
+# import manually and look at source at properties
+#uri = "file:///C:/Users/Manuel/Documents/geomatica/CascaisIn/ProdS.csv?encoding=System&type=csv&delimiter=;&maxFields=10000&detectTypes=yes&geomType=none&subsetIndex=no&watchFile=no"
+print(path2uri(FOLDER_IN,TN_PRODS,';'))
+#uri = urljoin('file:', urllib.request.pathname2url(os.path.join(FOLDER_IN,TN_PRODS)))+"?encoding=System&type=csv&delimiter=;&maxFields=10000&detectTypes=yes&geomType=none&subsetIndex=no&watchFile=no"
+uri=path2uri(FOLDER_IN,TN_PRODS,';')
+ProdS = QgsVectorLayer(uri, "ProdS", "delimitedtext")
+cascais.addMapLayer(ProdS)
+#uri = "file:////"+os.path.join(FOLDER_IN,TN_PROTRV)+"?encoding=System&type=csv&delimiter=,&maxFields=10000&detectTypes=yes&geomType=none&subsetIndex=no&watchFile=no"
+uri=path2uri(FOLDER_IN,TN_PROTRV,',')
+ProtRV = QgsVectorLayer(uri, "ProtRV", "delimitedtext")
+cascais.addMapLayer(ProtRV)
+
+# TOC
+layers = cascais.mapLayers()
+print(layers)
+
+######################################### processamento dos dados
+# processing algorithms - help
+# processing.algorithmHelp("native:saveselectedfeatures")
+
+# usoAdeq
+# can use extractbyexpression instead (see below)
+processing.run("qgis:selectbyexpression", \
+    {'INPUT':'UsoSolo',\
+    'EXPRESSION':f'{AN_USO_CODIGO} IN ( \'M\' , \'Fm\' , \'A\' , \'Iv\')',\
+    'METHOD':0})
+processing.run("native:saveselectedfeatures", \
+    {'INPUT':'UsoSolo',\
+    'OUTPUT':os.path.join(FOLDER_OUT,'usoAdeq.gpkg')})
+usoAdeq = iface.addVectorLayer(os.path.join(FOLDER_OUT,'usoAdeq.gpkg'),"", "ogr")
+cascais.removeMapLayer(UsoSolo)
+
+
+# join: returns CartaSolos with extra columns
+myJoin = QgsVectorLayerJoinInfo()
+myJoin.setJoinFieldName('COD1')
+myJoin.setTargetFieldName('COD1')
+myJoin.setJoinLayerId(ProdS.id())
+myJoin.setUsingMemoryCache(True)
+myJoin.setJoinLayer(ProdS)
+#myJoin.setJoinFieldNamesSubset(['Field_I_want_1', 'Field_I_want_2'])
+CartaSolos.addJoin(myJoin)
+
+# soloAdeq
+processing.run("native:extractbyexpression", \
+    {'INPUT': 'CartaSolos',\
+    'EXPRESSION':' \"ProdS_produtividade\" <>  \'Alta produtividade\' ',\
+    'OUTPUT':os.path.join(FOLDER_OUT,'soloAdeq.gpkg')})
+soloAdeq = iface.addVectorLayer(os.path.join(FOLDER_OUT,'soloAdeq.gpkg'),"", "ogr")
+cascais.removeMapLayer(CartaSolos)
+
+#usoSolos (clip)
+processing.run("native:clip", \
+    {'INPUT':'usoAdeq',\
+    'OVERLAY':'soloAdeq',\
+    'OUTPUT': os.path.join(FOLDER_OUT,'usoSolos.gpkg')})
+usoSolos = iface.addVectorLayer(os.path.join(FOLDER_OUT,'usoSolos.gpkg'),"", "ogr")
+cascais.removeMapLayer(usoAdeq)
+cascais.removeMapLayer(soloAdeq)
+
+# declives
+processing.run("native:extractbyexpression", \
+    {'INPUT': 'DecliveClasses',\
+    'EXPRESSION':' \"Classe_Dec\" =  \'Entre 0% e 5%\' ',\
+    'OUTPUT':os.path.join(FOLDER_OUT,'decliveAdeq.gpkg')})
+decliveAdeq = iface.addVectorLayer(os.path.join(FOLDER_OUT,'decliveAdeq.gpkg'),"", "ogr")
+cascais.removeMapLayer(DecliveClasses)
+
+#usoSolosDecl (clip)
+processing.run("native:clip", \
+    {'INPUT':'usoSolos',\
+    'OVERLAY':'decliveAdeq',\
+    'OUTPUT': os.path.join(FOLDER_OUT,'usoSolosDecl.gpkg')})
+usoSolosDecl = iface.addVectorLayer(os.path.join(FOLDER_OUT,'usoSolosDecl.gpkg'),"", "ogr")
+cascais.removeMapLayer(usoSolos)
+cascais.removeMapLayer(decliveAdeq)
+
+# RedeViaria join
+myJoin= QgsVectorLayerJoinInfo()
+myJoin.setJoinFieldName('Tipo')
+myJoin.setTargetFieldName('Tipo')
+myJoin.setJoinLayerId(ProtRV.id())
+myJoin.setUsingMemoryCache(True)
+myJoin.setJoinLayer(ProtRV)
+#myJoin.setJoinFieldNamesSubset(['Field_I_want_1', 'Field_I_want_2'])
+RedeViaria.addJoin(myJoin)
+
+# buffer
+processing.run("native:buffer", \
+    {'INPUT':'RedeViaria',\
+    'DISTANCE':QgsProperty.fromExpression('ProtRV'+'_'+AN_PROTRV_DIST),\
+    'SEGMENTS':5,\
+    'END_CAP_STYLE':0,\
+    'JOIN_STYLE':0,\
+    'MITER_LIMIT':2,\
+    'DISSOLVE':True,\
+    'OUTPUT':os.path.join(FOLDER_OUT,'bufferRV.gpkg')})
+bufferRV = iface.addVectorLayer(os.path.join(FOLDER_OUT,'bufferRV.gpkg'),"", "ogr")
+cascais.removeMapLayer(RedeViaria)
+cascais.removeMapLayer(ProtRV)
+
+# difference
+processing.run("native:difference", \
+    {'INPUT':'usoSolosDecl',\
+    'OVERLAY':'bufferRV',\
+    'OUTPUT':os.path.join(FOLDER_OUT,'RegiaoAdeq.gpkg')})
+RegiaoAdeq = iface.addVectorLayer(os.path.join(FOLDER_OUT,'RegiaoAdeq.gpkg'),"", "ogr")
+cascais.removeMapLayer(bufferRV)
+cascais.removeMapLayer(usoSolosDecl)
+
+# dissolve all
+processing.run("native:dissolve", \
+    {'INPUT':'RegiaoAdeq',\
+    'FIELD':[],\
+    'OUTPUT':os.path.join(FOLDER_OUT,'RegiaoAdeq2.gpkg')})
+RegiaoAdeq2 = iface.addVectorLayer(os.path.join(FOLDER_OUT,'RegiaoAdeq2.gpkg'),"", "ogr")
+    
+# multipart to singlepart
+processing.run("native:multiparttosingleparts", \
+    {'INPUT':'RegiaoAdeq2',\
+    'OUTPUT':os.path.join(FOLDER_OUT,'RegiaoAdeq3.gpkg')})
+RegiaoAdeq3 = iface.addVectorLayer(os.path.join(FOLDER_OUT,'RegiaoAdeq3.gpkg'),"", "ogr")
+cascais.removeMapLayer(RegiaoAdeq)
+cascais.removeMapLayer(RegiaoAdeq2)
+
+# linhas de água principais
+processing.run("qgis:selectbyexpression", \
+    {'INPUT':'LAgua',\
+    'EXPRESSION':' \"Tipo\" = \'Principais\' ',\
+    'METHOD':0})
+processing.run("native:saveselectedfeatures", \
+    {'INPUT':'LAgua',\
+    'OUTPUT':os.path.join(FOLDER_OUT,'LAPrincipais.gpkg')})
+LAPrincipais = iface.addVectorLayer(os.path.join(FOLDER_OUT,'LAPrincipais.gpkg'),"", "ogr")
+cascais.removeMapLayer(LAgua)
+
+# features que intersectam LA proncipais
+processing.run("native:extractbylocation", \
+    {'INPUT':'RegiaoAdeq3',\
+    'PREDICATE':[0],\
+    'INTERSECT':'LAPrincipais',\
+    'OUTPUT':os.path.join(FOLDER_OUT,'RegiaoFinal.gpkg')})
+RegiaoFinal = iface.addVectorLayer(os.path.join(FOLDER_OUT,'RegiaoFinal.gpkg'),"", "ogr")
+cascais.removeMapLayer(RegiaoAdeq3)
+
+# calcular area
+processing.run("qgis:exportaddgeometrycolumns", \
+    {'INPUT':'RegiaoFinal',\
+    'CALC_METHOD':2,\
+    'OUTPUT':os.path.join(FOLDER_OUT,'RegiaoFinal2.gpkg')})
+RegiaoFinal2 = iface.addVectorLayer(os.path.join(FOLDER_OUT,'RegiaoFinal2.gpkg'),"", "ogr")
+cascais.removeMapLayer(RegiaoFinal)
+
+# linhas de água principais
+processing.run("qgis:extractbyexpression", \
+    {'INPUT':'RegiaoFinal2',\
+    'EXPRESSION':' \"area\" >300000 ',\
+    'METHOD':0, \
+    'OUTPUT':os.path.join(FOLDER_OUT,'Final.gpkg')})
+Final = iface.addVectorLayer(os.path.join(FOLDER_OUT,'Final.gpkg'),"", "ogr")
+
+# create new attribute for the area with PyQGIS
+Final.dataProvider().addAttributes([QgsField("myArea", QVariant.Double)]) # does not do anything
+Final.updateFields() # now, there is anew fieal mArea will NULL values
+# Recreate the list field by the name to have index of the field
+fields_name = [f.name() for f in Final.fields()] # ['fid', 'CODIGO', 'area', 'perimeter', 'myArea']
+# we get the index of the Area field
+fareaidx = fields_name.index('myArea') #4
+
+d = QgsDistanceArea()
+d.setEllipsoid('WGS84')
+for feat in Final.getFeatures():
+    geom = feat.geometry()
+    #print("d.measureArea (m2):", d.measureArea(geom))
+    #print("geom.area (m2):", geom.area())
+    # For each feature :
+    # We calculate the area and put the index of the field Area
+    # We round the area value by 2 digit
+    attr = {fareaidx : round(feat.geometry().area(), 2)}
+    # We change the the value of Area Field for this feature.
+    Final.dataProvider().changeAttributeValues({feat.id() : attr})
+
+
