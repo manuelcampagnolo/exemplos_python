@@ -1,0 +1,13 @@
+import numpy
+from time import process_time
+N=pow(10,4)
+print(N)
+count=0
+t1_start = process_time() 
+for i in range(N):
+    for j in range(i):
+        if (i+1) % (j+1) ==0:
+            count+=1
+print(i,j,count)
+t1_stop = process_time()
+print("Elapsed time during the whole program in seconds:", t1_stop-t1_start)  
