@@ -1,3 +1,8 @@
+# https://docs.qgis.org/3.16/en/docs/pyqgis_developer_cookbook/vector.html#appearance-symbology-of-vector-layers
+# https://python.hotexamples.com
+# https://anitagraser.com/pyqgis-101-introduction-to-qgis-python-programming-for-non-programmers/
+# kill qgis from osg shell: taskkill /f /im qgis-ltr-bin.exe /t
+
 
 # https://docs.qgis.org/3.16/en/docs/user_manual/processing/console.html
 from qgis.core import * # por omissão em QGIS
@@ -7,7 +12,10 @@ import numpy as np
 import os
 from urllib.parse import urljoin #path2uri
 import urllib.request
+import pandas as pd
+import matplotlib.pyplot as plt
 from PyQt5.QtCore import QVariant  # to use for attributes
+from owslib.wfs import WebFeatureService # for WFS:
 import pyproj
 from requests import Request
 from typing import List # raster color ramp
@@ -15,7 +23,21 @@ import time # time.sleep()
 import copy # deepcopy or shallowcopy (copy) -- does not seem to work
 import re #regex
 import glob # file search
+from pathlib import Path # file search
 
+##################################### CRTL-E to run selected; Python Console actions are not registered in the QGIS Shortcut Manager, 
+from qgis.gui import QgsGui
+from qgis.utils import iface
+from console import console
+
+if not console._console:
+    # We need to initialize the console (QGIS knows how)
+    # and respect the opened/closed state from last session
+    iface.actionShowPythonDialog().trigger()
+    console._console.setVisible(console._console.isUserVisible())
+
+QgsGui.shortcutsManager().registerAllChildren(console._console.widget())
+######################################
 
 #################################### definir nomes pastas, ficheiros, atributos
 # layer tree
@@ -66,90 +88,91 @@ if False:
 # FIXO: depende de nós
 # definir directamente as pastas para dados
 FOLDER_IN=r'C:\Users\mlc\OneDrive - Universidade de Lisboa\Documents\geomatica-sigdr-2020-2021\Trabalho_avaliacao\FOLDER_IN' # pasta com todos os ficheiros de input da 1a e 2a parte #<<<<<<<<<<<  ALTERAR SE NECESSÁRIO
-FOLDER_OUT=r'C:\Users\mlc\OneDrive - Universidade de Lisboa\Documents\temp2' # resultados #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<  ALTERAR SE NECESSÁRIO   
+FOLDER_OUT=r'C:\Users\mlc\OneDrive - Universidade de Lisboa\Documents\temp2' # resultados #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<  ALTERAR SE NECESSÁRIO    
 
-# Variável: depende do grupo
+# Variável: depende do grupo 
 # definir FOLDER_AN: pasta do trabalho do grupo (com todos os ficheiros e subpastas)
 # definir nomes dos atributos: AN_DENSIDADE e AN_ALTURA
 turma=3
-grupo=7
-if True:
+grupo=1
+if True: 
     FOLDER_TRABALHOS=r'C:\Users\mlc\OneDrive - Universidade de Lisboa\Documents\geomatica-sigdr-2020-2021\Trabalho_avaliacao\parte1-trab-entregues'
     # turma 1, grupo 1
     if turma==1 and grupo==1:
-        FOLDER_AN=r'C:\Users\mlc\OneDrive - Universidade de Lisboa\Documents\geomatica-sigdr-2020-2021\Trabalho_avaliacao\parte1-trab-entregues\turma1\Grupo1_Turma1_Parte1\Grupo1_Turma1_Parte1'
+        FOLDER_AN=r'C:\Users\mlc\OneDrive - Universidade de Lisboa\Documents\geomatica-sigdr-2020-2021\Trabalho_avaliacao\parte1-trab-entregues\turma1\Grupo1_Turma1_Parte1\Grupo1_Turma1_Parte1' 
         AN_DENSIDADE='Tipo_estrato' #'tipo_de_estrato'# 'Tipo_Estrato' # <<<<<<<<<<<<<<<<<<<<<<<<<  ALTERAR SE NECESSÁRIO
         AN_ALTURA='Tipo_estrato' # 'tipo_de_estrato_n2' # <<<<<<<<<<<<<<<<<<<<<<<<<  ALTERAR SE NECESSÁRIO
     # turma 1, grupo 2
     if turma==1 and grupo==2:
         FOLDER_AN=r'C:\Users\mlc\OneDrive - Universidade de Lisboa\Documents\geomatica-sigdr-2020-2021\Trabalho_avaliacao\parte1-trab-entregues\turma1\turno1grupo2parte1\turno1grupo2parte1'
-        AN_DENSIDADE='densidade'
-        AN_ALTURA='altura'
+        AN_DENSIDADE='densidade' 
+        AN_ALTURA='altura' 
     # terma 1, grupo 3
     if turma==1 and grupo==3:
-        FOLDER_AN=r'C:\Users\mlc\OneDrive - Universidade de Lisboa\Documents\geomatica-sigdr-2020-2021\Trabalho_avaliacao\parte1-trab-entregues\turma1\turno1grupo3parte1_final\turno1grupo3parte1_final'
-        AN_DENSIDADE='arboreo'
-        AN_ALTURA='naoarboreo'
+        FOLDER_AN=r'C:\Users\mlc\OneDrive - Universidade de Lisboa\Documents\geomatica-sigdr-2020-2021\Trabalho_avaliacao\parte1-trab-entregues\turma1\turno1grupo3parte1_final\turno1grupo3parte1_final' 
+        AN_DENSIDADE='arboreo' 
+        AN_ALTURA='naoarboreo' 
     # turma 1, grupo 4
     if turma==1 and grupo==4:
         FOLDER_AN=r'C:\Users\mlc\OneDrive - Universidade de Lisboa\Documents\geomatica-sigdr-2020-2021\Trabalho_avaliacao\parte1-trab-entregues\turma1\turno1grupo4parte1'
-        AN_DENSIDADE='arboreo'
-        AN_ALTURA='naoarboreo'
+        AN_DENSIDADE='arboreo' 
+        AN_ALTURA='naoarboreo' 
     # turma 1, grupo 5
     if turma==1 and grupo==5:
         FOLDER_AN=r'C:\Users\mlc\OneDrive - Universidade de Lisboa\Documents\geomatica-sigdr-2020-2021\Trabalho_avaliacao\parte1-trab-entregues\turma1\turno1_grupo5_parte1'
-        AN_DENSIDADE='Tipos_estrato'
-        AN_ALTURA='Tipos_estrato_naoarboreo'    
+        AN_DENSIDADE='Tipos_estrato' 
+        AN_ALTURA='Tipos_estrato_naoarboreo'     
     # turma 2, grupo 1
     if turma==2 and grupo==1:
-        FOLDER_AN=r'C:\Users\mlc\OneDrive - Universidade de Lisboa\Documents\geomatica-sigdr-2020-2021\Trabalho_avaliacao\parte1-trab-entregues\turma2\grupo1turma2\grupo 1 turma 2\FINAL DO TRABALHO (2)\FINAL DO TRABALHO'
-        AN_DENSIDADE='tipo_de_estrato'
-        AN_ALTURA='tipo_de_estrato_n2'
+        FOLDER_AN=r'C:\Users\mlc\OneDrive - Universidade de Lisboa\Documents\geomatica-sigdr-2020-2021\Trabalho_avaliacao\parte1-trab-entregues\turma2\grupo1turma2\grupo 1 turma 2\FINAL DO TRABALHO (2)\FINAL DO TRABALHO' 
+        AN_DENSIDADE='tipo_de_estrato' 
+        AN_ALTURA='tipo_de_estrato_n2' 
     # turma 2, grupo 2
     if turma==2 and grupo==2:
-        FOLDER_AN=r'C:\Users\mlc\OneDrive - Universidade de Lisboa\Documents\geomatica-sigdr-2020-2021\Trabalho_avaliacao\parte1-trab-entregues\turma2\turno2grupo2parte1\turno2grupo2parte1'
-        AN_DENSIDADE='Tipo_de_estrato_N2'
-        AN_ALTURA='Tipo_de_estrato_N2'
+        FOLDER_AN=r'C:\Users\mlc\OneDrive - Universidade de Lisboa\Documents\geomatica-sigdr-2020-2021\Trabalho_avaliacao\parte1-trab-entregues\turma2\turno2grupo2parte1\turno2grupo2parte1' 
+        AN_DENSIDADE='Tipo_de_estrato_N2' 
+        AN_ALTURA='Tipo_de_estrato_N2' 
     #
     if turma==2 and grupo==3:
         FOLDER_AN=r'C:\Users\mlc\OneDrive - Universidade de Lisboa\Documents\geomatica-sigdr-2020-2021\Trabalho_avaliacao\parte1-trab-entregues\turma2\turno2_grupo3parte1\turno2_grupo3parte1'
-        AN_DENSIDADE='Tipo_de_estrato_N2'
-        AN_ALTURA='Tipo_de_estrato_N2'
+        AN_DENSIDADE='Tipo_de_estrato_N2' 
+        AN_ALTURA='Tipo_de_estrato_N2' 
     # turma 3, grupo 1
     if turma==3 and grupo==1:
-        FOLDER_AN=r'C:\Users\mlc\OneDrive - Universidade de Lisboa\Documents\geomatica-sigdr-2020-2021\Trabalho_avaliacao\parte1-trab-entregues\turma3\turno3grupo1parte1'
-        AN_DENSIDADE='estrato'
-        AN_ALTURA='estrato'
+        FOLDER_AN=r'C:\Users\mlc\OneDrive - Universidade de Lisboa\Documents\geomatica-sigdr-2020-2021\Trabalho_avaliacao\parte-1-parte-2-entregue\turma3\turno3grupo1'
+        AN_DENSIDADE='estrato' 
+        AN_ALTURA='estrato' 
     # turma 3, grupo 2
     if turma==3 and grupo==2:
         FOLDER_AN=r'C:\Users\mlc\OneDrive - Universidade de Lisboa\Documents\geomatica-sigdr-2020-2021\Trabalho_avaliacao\parte1-trab-entregues\turma3\turma3grupo2parte1'
-        AN_DENSIDADE='Densidade'
-        AN_ALTURA='Altura'
+        FOLDER_AN=r'C:\Users\mlc\OneDrive - Universidade de Lisboa\Documents\geomatica-sigdr-2020-2021\Trabalho_avaliacao\parte-1-parte-2-entregue\turma3\turma3grupo2'
+        AN_DENSIDADE='Densidade' 
+        AN_ALTURA='Altura' 
     # turma 3, grupo 3 (comparar com grupo 4!!!)
     if turma==3 and grupo==3:
         FOLDER_AN=r'C:\Users\mlc\OneDrive - Universidade de Lisboa\Documents\geomatica-sigdr-2020-2021\Trabalho_avaliacao\parte1-trab-entregues\turma3\turma3grupo3\turma3grupo3parte1'
-        AN_DENSIDADE='Estratos'
-        AN_ALTURA='Estratos'
+        AN_DENSIDADE='Estratos' 
+        AN_ALTURA='Estratos' 
     # turma 3, grupo 4  (comparar com grupo 3!!!)
     if turma==3 and grupo==4:
         FOLDER_AN=r'C:\Users\mlc\OneDrive - Universidade de Lisboa\Documents\geomatica-sigdr-2020-2021\Trabalho_avaliacao\parte1-trab-entregues\turma3\Trabalho de Qgis - Turno 3 - Grupo 4 - Parte 1'
-        AN_DENSIDADE='Estrato'
-        AN_ALTURA='Estrato'
+        AN_DENSIDADE='Estrato' 
+        AN_ALTURA='Estrato' 
     # turma 3, grupo 5
     if turma==3 and grupo==5:
         FOLDER_AN=r'C:\Users\mlc\OneDrive - Universidade de Lisboa\Documents\geomatica-sigdr-2020-2021\Trabalho_avaliacao\parte1-trab-entregues\turma3\turnoSIGDRgrupo5parte1\TRABALHO SIG'
-        AN_DENSIDADE='Estrato'
-        AN_ALTURA='Estrato'
+        AN_DENSIDADE='Estrato' 
+        AN_ALTURA='Estrato' 
     # turma 3, grupo 6
     if turma==3 and grupo==6:
         FOLDER_AN=r'C:\Users\mlc\OneDrive - Universidade de Lisboa\Documents\geomatica-sigdr-2020-2021\Trabalho_avaliacao\parte1-trab-entregues\turma3\TurnoSIGDR_grupo6_parte1'
-        AN_DENSIDADE='Estratos'
-        AN_ALTURA='Estratos'
+        AN_DENSIDADE='Estratos' 
+        AN_ALTURA='Estratos' 
     # turma 3, grupo 7
     if turma==3 and grupo==7:
         FOLDER_AN=r'C:\Users\mlc\OneDrive - Universidade de Lisboa\Documents\geomatica-sigdr-2020-2021\Trabalho_avaliacao\parte1-trab-entregues\turma3\Trabalho parte1_grupo7_22687_23712\Trabalho Qgis parte 1_grupo7 _22687_23712'
-        AN_DENSIDADE='Classificacao'
-        AN_ALTURA='Classificacao'
+        AN_DENSIDADE='Classificacao' 
+        AN_ALTURA='Classificacao' 
 ###########################################################################
 
 # identify files that match regular expressions:
@@ -157,64 +180,86 @@ if True:
 def glob_re(pattern, strings):
     return list(filter(re.compile(pattern).match, strings)) # list to convert iterator in list
 
-# find file names
+
+# find file names with regular expressions
 allfiles=glob.glob(os.path.join(FOLDER_AN , "**"), recursive = True)
-for f in allfiles: print(os.path.basename(f))
-
-Larbor=glob_re(".*(ARBOREO|Arboreo|arboreo).*(gpkg|shp)$",allfiles)
-Lnarbor=glob_re(".*(NAOARBOREO|NaoArboreo|Naoarboreo|naoarboreo).*(gpkg|shp)$",allfiles)
-# usando ^=XOR ou - (dif)
-Larbor=list(set(Larbor)^set(Lnarbor))
-Lcos_ppsm=glob_re(".*(COS|Cos|cos).(|_)(PPSM|ppsm).*(gpkg|shp)$",allfiles)
-Lifn_ppsm=glob_re(".*(IFN|Ifn|ifn).(|_)(PPSM|ppsm).*(gpkg|shp)$",allfiles)
-Lppsm=glob_re(".*(PPSM|ppsm).*(gpkg|shp)$",allfiles)
-Lrpfgc_ppsm=glob_re(".*(R.F.C|r.f.c)(|_)(PPSM|ppsm).*(gpkg|shp)$",allfiles)
-Lppsm=list(((set(Lppsm)-set(Lrpfgc_ppsm))-set(Lcos_ppsm))-set(Lifn_ppsm))
-
-if False: # parte 2
-    # outputs alunos parte 2
-    Lmde=glob_re(".*(MDE|mde).*tif$",allfiles)
+basefiles=[]
+for f in allfiles: 
+    print(os.path.basename(f))
+    basefiles.append(os.path.basename(f))
 
 
-# mensagens se os ficheiros têm nome distinto do pedido:
-if len(Larbor)==1:
-    FN_ARBOREO=Larbor[0]
-    print(FN_ARBOREO)
+# zip is the pythonic way to iterate over multiple sequences in parallel,
+filtroTF=[re.search('^(arboreo|Arboreo|ARBOREO).(shp|gpkg)$', x) is not None for x in basefiles] # filter defined from basefiles
+#[i for (i, v) in zip(basefiles, filtroTF) if v]
+# ficheiro mais recente getctime (created) getmtime (modified)?   key to get most recnt of the files
+if sum(filtroTF) >0:
+    FN_ARBOREO=max([i for (i, v) in zip(allfiles, filtroTF) if v],key=os.path.getmtime) # filter applied to allfiles
 else:
     QMessageBox.warning(parent,'nome ficheiro','ficheiro arboreo indefinido')
     stop
 
-if len(Lnarbor)==1:
-    FN_NARBOREO=Lnarbor[0]
-    print(FN_NARBOREO)
+filtroTF=[re.search('^(naoarboreo|Nao(A|a)rboreo|NAOARBOREO).(shp|gpkg)$', x) is not None for x in basefiles] 
+if sum(filtroTF) >0:
+    FN_NARBOREO=max([i for (i, v) in zip(allfiles, filtroTF) if v],key=os.path.getmtime)
 else:
     QMessageBox.warning(parent,'nome ficheiro','ficheiro naoarboreo indefinido')
     stop
 
-if len(Lppsm)==1:
-    FN_PPSM=Lppsm[0]
-    print(FN_PPSM)
-else:
-    QMessageBox.warning(parent,'nome ficheiro','ficheiro PPSM indefinido')
 
-if len(Lcos_ppsm)==1:
-    FN_COS_PPSM=Lcos_ppsm[0]
-    print(FN_COS_PPSM)
-else:
-    QMessageBox.warning(parent,'nome ficheiro','ficheiro COS_PPSM indefinido')
-
-if len(Lifn_ppsm)==1:
-    FN_IFN_PPSM=Lifn_ppsm[0]
-    print(FN_IFN_PPSM)
-else:
-    QMessageBox.warning(parent,'nome ficheiro','ficheiro IFN_PPSM indefinido')
-
-if len(Lrpfgc_ppsm)==1:
-    FN_RPFGC_PPSM=Lrpfgc_ppsm[0]
-    print(FN_RPFGC_PPSM)
-else:
-    QMessageBox.warning(parent,'nome ficheiro','ficheiro RPFGC_PPSM indefinido')
-
+#Larbor=glob_re(".*(ARBOREO|Arboreo|arboreo).*(gpkg|shp)$",allfiles)
+#Lnarbor=glob_re(".*(NAOARBOREO|NaoArboreo|Naoarboreo|naoarboreo).*(gpkg|shp)$",allfiles)
+## usando ^=XOR ou - (dif)
+#Larbor=max(list(set(Larbor)^set(Lnarbor)))
+#Lcos_ppsm=glob_re(".*(COS|Cos|cos).(|_)(PPSM|ppsm).*(gpkg|shp)$",allfiles)
+#Lifn_ppsm=glob_re(".*(IFN|Ifn|ifn).(|_)(PPSM|ppsm).*(gpkg|shp)$",allfiles)
+#Lppsm=glob_re(".*(PPSM|ppsm).*(gpkg|shp)$",allfiles)
+#Lrpfgc_ppsm=glob_re(".*(R.F.C|r.f.c)(|_)(PPSM|ppsm).*(gpkg|shp)$",allfiles)
+#Lppsm=list(((set(Lppsm)-set(Lrpfgc_ppsm))-set(Lcos_ppsm))-set(Lifn_ppsm))
+#
+#if False: # parte 2
+#    # outputs alunos parte 2
+#    Lmde=glob_re(".*(MDE|mde).*tif$",allfiles)
+#
+## mensagens se os ficheiros têm nome distinto do pedido:
+#if Larbor is not None:
+#    FN_ARBOREO=Larbor[0]
+#    print(FN_ARBOREO)
+#else:
+#    QMessageBox.warning(parent,'nome ficheiro','ficheiro arboreo indefinido')
+#    stop
+#
+#if len(Lnarbor)==1:
+#    FN_NARBOREO=Lnarbor[0]
+#    print(FN_NARBOREO)
+#else:
+#    QMessageBox.warning(parent,'nome ficheiro','ficheiro naoarboreo indefinido')
+#    stop
+#
+#if len(Lppsm)==1:
+#    FN_PPSM=Lppsm[0]
+#    print(FN_PPSM)
+#else:
+#    QMessageBox.warning(parent,'nome ficheiro','ficheiro PPSM indefinido')
+#
+#if len(Lcos_ppsm)==1:
+#    FN_COS_PPSM=Lcos_ppsm[0]
+#    print(FN_COS_PPSM)
+#else:
+#    QMessageBox.warning(parent,'nome ficheiro','ficheiro COS_PPSM indefinido')
+#
+#if len(Lifn_ppsm)==1:
+#    FN_IFN_PPSM=Lifn_ppsm[0]
+#    print(FN_IFN_PPSM)
+#else:
+#    QMessageBox.warning(parent,'nome ficheiro','ficheiro IFN_PPSM indefinido')
+#
+#if len(Lrpfgc_ppsm)==1:
+#    FN_RPFGC_PPSM=Lrpfgc_ppsm[0]
+#    print(FN_RPFGC_PPSM)
+#else:
+#    QMessageBox.warning(parent,'nome ficheiro','ficheiro RPFGC_PPSM indefinido')
+#
 
 #
 # show field names
@@ -236,7 +281,7 @@ if False:
     for feat in arboreo.getFeatures():
         print(feat.geometry().isGeosValid())
 
-# Qt box   
+# Qt box    
 res=QMessageBox.question(parent,'Atributos', 'arboreo: '+arboreo_fields+ '\n naoarboreo: ' + naoarboreo_fields + '\n Continuar?' )
 if res==QMessageBox.No: stop
 
@@ -244,10 +289,10 @@ if res==QMessageBox.No: stop
 #TN_PRODS = 'ProdS.csv' # delimiter ;
 
 # NÃO ALTERAR:
-AN_DENSIDADE_NEW='densidade' #
-AN_ALTURA_NEW='altura' #
+AN_DENSIDADE_NEW='densidade' # 
+AN_ALTURA_NEW='altura' # 
 
-resMDE=1 # resolução DTM
+resMDE=1 # resolução DTM 
 distBuffer=0
 minmaxarea=1/1000 # tolerance in m2 for gaps and overlaps
 
@@ -258,9 +303,9 @@ minmaxarea=1/1000 # tolerance in m2 for gaps and overlaps
 count=0
 while len(os.listdir(FOLDER_OUT))>0 and count < 1000:
     count+=1
-    if len(os.listdir(FOLDER_OUT))==0: break
-    for f in os.listdir(FOLDER_OUT):
-        try:
+    if len(os.listdir(FOLDER_OUT))==0: break 
+    for f in os.listdir(FOLDER_OUT): 
+        try: 
             os.remove(os.path.join(FOLDER_OUT,f))
         except:
             print(str(count)+f)
@@ -331,7 +376,7 @@ def legenda_categorial(layer, value_field , num_classes):
     renderer.updateColorRamp(color_ramp)
     #
     layer.setRenderer(renderer)
-    layer.triggerRepaint()
+    layer.triggerRepaint() 
 
 def color_ramp_items(colormap: str, minimum: float, maximum: float, nclass: int) -> List[QgsColorRampShader.ColorRampItem]:
     delta = maximum - minimum
@@ -467,7 +512,7 @@ def createEmptyMemoryLayer(sourceLayer):
 #    'OUTPUT':os.path.join(NEW_FOLDER,NEW_FN)})
 #    myproj.removeMapLayer('Renamed')
 #    #myproj.removeMapLayer(os.path.join(OLD_FOLDER,OLD_FN))
-  
+   
 def add_fixed_attribute_str(lyr,attname,strval):
     lyr.dataProvider().addAttributes([QgsField(attname, QVariant.String)])
     lyr.updateFields()
@@ -488,7 +533,7 @@ def add_fixed_attribute_double(lyr,attname,val):
 
 
 ########################################### import, preprocess and rename layers
-   
+    
 # Import vector layer
 # vlayer = QgsVectorLayer(data_source, layer_name, provider_name)
 # the layer's name is "Declives"
@@ -514,18 +559,19 @@ RNAP = iface.addVectorLayer(os.path.join(FOLDER_IN,FN_RNAP),"", "ogr")
 # RNAP.selectByExpression('"NOME"=\'Serra de Montejunto\'', QgsVectorLayer.SetSelection)
 # RNAP.selectByExpression('NOME ILIKE \'%Montejunto%\'', QgsVectorLayer.SetSelection)
 
+
 # create PPSM and remove RNAP from project
 RNAP.featureCount()
-PPSM=RNAP
+PPSM=RNAP.clone()  # They get different id .id()
 # this instruction automatically extracts only the features that satisfy the condition and update RNAP
-# only the features that match the filter (provided using a SQL statement or other definition string the the "subset" QString) "will belong to the layer" after it's being filtered.
+# only the features that match the filter (provided using a SQL statement or other definition string the the "subset" QString) "will belong to the layer" after it's being filtered. 
 PPSM.setSubsetString('NOME ILIKE \'%Montejunto%\'')
 # write layer as a file
 QgsVectorFileWriter.writeAsVectorFormat(PPSM, os.path.join(FOLDER_OUT,'PPSM.gpkg'),'ogr')
 myproj.removeMapLayer(RNAP)
 PPSM=iface.addVectorLayer(os.path.join(FOLDER_OUT,'PPSM.gpkg'),"", "ogr")
 
-# Create RPFGC_PPSM
+# Create RPFGC_PPSM 
 processing.run("native:clip", \
     {'INPUT':RPFGC,\
     'OVERLAY':PPSM,\
@@ -618,9 +664,9 @@ for feat1 in todos_estratos.getFeatures():
         if feat1.id() < feat2.id():
             maxarea=max(maxarea,feat1.geometry().intersection(feat2.geometry()).area())
 
-# Qt box   
+# Qt box    
 res=QMessageBox.question(parent,'Maximum overlap', 'O maior overlap é '+str(round(maxarea,6))+' m2 . Continuar?' )
-#YES: 16384
+#YES: 16384 
 # NO: 65536
 if res==QMessageBox.No: stop
  
@@ -651,7 +697,7 @@ symdif=QgsVectorLayer(uri,"symdif","memory")  # memory layer: doesn't appear in 
 pr=symdif.dataProvider()
 #symdif=createEmptyMemoryLayer(RPFGC_PPSM_dissolve)
 
-#new_feats=[]  #
+#new_feats=[]  # 
 # There should be just one feature for each layer
 for feat1 in RPFGC_PPSM_dissolve.getFeatures():
     for feat2 in todos_estratos_dissolve.getFeatures():
@@ -664,6 +710,17 @@ for feat1 in RPFGC_PPSM_dissolve.getFeatures():
             print('dif.area()'+str(dif.area()))
             pr.addFeatures([new_feat])
 
+
+# add symdif to layers panel:
+# 1) try the simpler option, without saving as a new file: QgsProject.instance().addMapLayer(symdif)
+# or
+# 2) saving as new file and then add layer to iface
+options = QgsVectorFileWriter.SaveVectorOptions()
+options.driverName = 'GPKG'
+options.layerName = 'symdif'
+QgsVectorFileWriter.writeAsVectorFormat(symdif,os.path.join(FOLDER_OUT,'symdif.gpkg'),options)
+symdif = iface.addVectorLayer(os.path.join(FOLDER_OUT,'symdif.gpkg'),"", "ogr")
+#
 
 #symdif.dataProvider().addFeatures(new_feats)
 #root.addLayer(symdif)
@@ -684,7 +741,7 @@ if symdif.featureCount()>0:
     for feat in symdif.getFeatures():
         geom=feat.geometry()
         maxarea=max(maxarea,geom.area())
-    # Qt box   
+    # Qt box    
     res=QMessageBox.question(parent,'Maximum gap', 'O gap maior é '+str(round(maxarea,6))+' m2 . Continuar?' )
     if res==QMessageBox.No: stop
 else:
@@ -715,9 +772,9 @@ limMDE= iface.addVectorLayer(os.path.join(FOLDER_OUT,'limMDE.gpkg'),'','ogr')
 #nrow=round((PPSM.extent().yMaximum()-PPSM.extent().yMinimum())/resMDE)
 
 #LFesto= iface.addVectorLayer(os.path.join(FOLDER_AN,FN_LFESTO),"", "ogr")
-mde=processing.run("qgis:tininterpolation",
-            {  
-                'EXTENT': limMDE,
+mde=processing.run("qgis:tininterpolation", 
+            {   
+                'EXTENT': limMDE, 
                 'INTERPOLATION_DATA': os.path.join(FOLDER_IN,FN_LN_LFESTO)+'::~::1::~::-1::~::2::|::' +\
                 os.path.join(FOLDER_IN,FN_LN_CNIVEL)+'::~::0::~::2::~::1::|::' +\
                 os.path.join(FOLDER_IN,FN_LN_LAGUA)+'::~::1::~::-1::~::2::|::' +\
@@ -739,7 +796,7 @@ triangFGC= iface.addVectorLayer(os.path.join(FOLDER_OUT,'triangFGC.gpkg'),'','og
 
 
 # alternative: densify and convert break line into vertices with attribute elevation
-if False:
+if False: 
     ## densify LFesto
     resDENS=10*resMDE
     fndens = 'LFesto'+str(resDENS)+'m_dens.gpkg'
@@ -748,25 +805,25 @@ if False:
     ln = 'LFesto'+str(resDENS)+'m'
     fn_ln = fn + '|layername=' + ln
 
-    processing.run("native:densifygeometriesgivenaninterval",
+    processing.run("native:densifygeometriesgivenaninterval", 
         {'INPUT':os.path.join(FOLDER_IN,FN_LN_LFESTO),
         'INTERVAL': resDENS,
         'OUTPUT': os.path.join(FOLDER_OUT,fndens)})
 
-    processing.run("native:extractvertices",
+    processing.run("native:extractvertices", 
         {'INPUT':os.path.join(FOLDER_OUT,fndens),
         'OUTPUT':os.path.join(FOLDER_OUT,fnextract)})
 
 
-    processing.run("native:extractzvalues",
+    processing.run("native:extractzvalues", 
         {'INPUT':os.path.join(FOLDER_OUT,fnextract),
         'SUMMARIES':[0],
         'COLUMN_PREFIX':'z_',
         'OUTPUT':os.path.join(FOLDER_OUT,fn)})
 
-    mde=processing.run("qgis:tininterpolation",
-                {  
-                    'EXTENT': limMDE,
+    mde=processing.run("qgis:tininterpolation", 
+                {   
+                    'EXTENT': limMDE, 
                     'INTERPOLATION_DATA': os.path.join(FOLDER_IN,'CNivel.gpkg|layername=CNivel')+'::~::0::~::2::~::1::|::' +\
                     os.path.join(FOLDER_IN,'LAgua.gpkg|layername=LAgua')+'::~::1::~::-1::~::2::|::' +\
                     # os.path.join(FOLDER_IN,'Lfesto.gpkg|layername=Lfesto')+'::~::1::~::-1::~::2::|::' +\
@@ -793,7 +850,7 @@ if False:
 
 # compute slope from mde
 
-processing.run("gdal:slope",
+processing.run("gdal:slope", 
     {'INPUT':mde,
     'BAND':1,
     'SCALE':1,
@@ -803,9 +860,9 @@ processing.run("gdal:slope",
     'OPTIONS':'',
     'OUTPUT': os.path.join(FOLDER_OUT,'declive.tif')})
 
-declive= iface.addRasterLayer(os.path.join(FOLDER_OUT,'declive.tif'))
+declive= iface.addRasterLayer(os.path.join(FOLDER_OUT,'declive.tif')) 
 
-processing.run("gdal:cliprasterbymasklayer",
+processing.run("gdal:cliprasterbymasklayer", 
     {'INPUT': declive,
     'MASK': limMDE,
     'SOURCE_CRS':None,
@@ -828,9 +885,9 @@ myproj.removeMapLayer(declive)
 myproj.removeMapLayer(limMDE)
 
 res=QMessageBox.question(parent,'Triangulação', 'Quer ver a triangulação?' )
-#YES: 16384
+#YES: 16384 
 # NO: 65536
-if res==QMessageBox.No: myproj.removeMapLayer(triangFGC) #
+if res==QMessageBox.No: myproj.removeMapLayer(triangFGC) # 
 
 ##########  Determinação de Faixas e FAD
 
@@ -905,7 +962,7 @@ params= {'FIC': ('white', 'FIC'),
 legenda(faixas,'tipo',params)
 
 
-# clean
+# clean 
 myproj.removeMapLayer(FRC_INT_FIC)
 myproj.removeMapLayer(FRC_INT)
 myproj.removeMapLayer(FRC_EXT)
@@ -939,7 +996,7 @@ with edit(FAD):  # necessary to edit layer
         FAD.updateFeature(feat)
 
 # rasterize FAB by attribute euros_m2
-processing.run("gdal:rasterize",
+processing.run("gdal:rasterize", 
     {'INPUT':FAD,
     'FIELD':'euros_m2',
     'BURN':0,
@@ -955,7 +1012,7 @@ processing.run("gdal:rasterize",
     'EXTRA':'',
     'OUTPUT':os.path.join(FOLDER_OUT,'Euros.tif')})
 
-Euros= iface.addRasterLayer(os.path.join(FOLDER_OUT,'Euros.tif'))
+Euros= iface.addRasterLayer(os.path.join(FOLDER_OUT,'Euros.tif')) 
 
 #print(Euros.crs().authid())
 #print(Euros.extent().xMinimum())
@@ -970,12 +1027,12 @@ Euros= iface.addRasterLayer(os.path.join(FOLDER_OUT,'Euros.tif'))
 # dem_arr = ds.GetRasterBand(1).ReadAsArray()
 # print(dem_arr[0][0]
 
-bandEuros = gdal.Open(os.path.join(FOLDER_OUT,'Euros.tif'), gdal.GA_ReadOnly)
+bandEuros = gdal.Open(os.path.join(FOLDER_OUT,'Euros.tif'), gdal.GA_ReadOnly) 
 bandEuros_array = bandEuros.ReadAsArray()
 #print(bandEuros_array.shape)
 bandEuros = None
 
-bandDeclive = gdal.Open(os.path.join(FOLDER_OUT,'decliveFGC.tif'), gdal.GA_ReadOnly)
+bandDeclive = gdal.Open(os.path.join(FOLDER_OUT,'decliveFGC.tif'), gdal.GA_ReadOnly) 
 bandDeclive_array = bandDeclive.ReadAsArray()
 #print(bandDeclive_array.shape)
 bandDeclive = None
@@ -990,7 +1047,7 @@ QMessageBox.information(parent,"Custo total", str(np.sum(custo_m2).round())+' eu
 
 
 # histogram of custo_m2
-if False:
+if False: 
     plt.hist(custo_m2,bins=10)
     plt.show()
 
@@ -1018,14 +1075,14 @@ if False and srs.IsProjected:
     print(srs.GetAttrValue('projcs'))
     print(srs.GetAttrValue('geogcs'))
 ds.SetProjection(srs.ExportToWkt())
-ds = None # to close
+ds = None # to close 
 EuroDeclive = iface.addRasterLayer(os.path.join(FOLDER_OUT,'EuroDeclive.tif'))
 
 #pseudocolor_styling(EuroDeclive, colormap="Viridis", nclass=3)
 
 
 # para verificar: calcular valor médio por ha (para comparar com Tabela 1)
-if False:
+if False: 
     for feat in RPFGC_PPSM.getFeatures():  print(np.sum(bandEuros_array)/(feat.geometry().area()/10000))
 
 
@@ -1041,7 +1098,7 @@ for layer in layers:
 
 # create groups in Layer Tree
 node_group1 = root.addGroup('cdg_correctos')
-node_group2 = root.addGroup('cdg_alunos')
+node_group2 = root.addGroup('cdg_alunos').setIsMutuallyExclusive(True)
 
 
 def add_vlayer_to_group(FOLDER_FN, LN, GN,LG):
@@ -1061,7 +1118,7 @@ def add_rlayer_to_group(FOLDER_FN, LN,  GN):
 add_vlayer_to_group(os.path.join(FOLDER_IN,'RVFundamental.gpkg'),'RVFundamental','cdg_correctos',LG=None)
 
 # estratos
-lg={'atrib' : 'densidade_altura',
+lg={'atrib' : 'densidade_altura', 
         'params': {'DENSO': ('red', 'denso'),
             'MEDIO': ('yellow', 'medio'),
             'ESPARSO': ('green', 'esparso'),
@@ -1071,7 +1128,7 @@ lg={'atrib' : 'densidade_altura',
 add_vlayer_to_group(os.path.join(FOLDER_OUT,'todos_estratos.gpkg'),'todos_estratos','cdg_correctos',LG=lg)
 
 # faixas
-lg= {'atrib': 'tipo',
+lg= {'atrib': 'tipo', 
     'params': {'FIC': ('white', 'FIC'), 'FRC_INT': ('gray', 'FRC_INT'), 'FRC_EXT': ('blue', 'FRC_EXT')}}
 add_vlayer_to_group(os.path.join(FOLDER_OUT,'faixas.gpkg'),'faixas','cdg_correctos',LG=lg)
 
@@ -1085,10 +1142,625 @@ add_rlayer_to_group(os.path.join(FOLDER_OUT,'Euros.tif'),'Euros','cdg_correctos'
 add_rlayer_to_group(os.path.join(FOLDER_OUT,'mde.tif'),'mde','cdg_correctos')
 
 ########### outputs alunos
-add_vlayer_to_group(FN_IFN_PPSM,'IFN_PPSM','cdg_alunos',LG=None)
+
 add_vlayer_to_group(FN_ARBOREO,'arboreo','cdg_alunos',LG=None)
 add_vlayer_to_group(FN_NARBOREO,'naoarboreo','cdg_alunos',LG=None)
-add_vlayer_to_group(FN_RPFGC_PPSM,'RPFGC_PPSM','cdg_alunos',LG=None)
-add_vlayer_to_group(FN_PPSM,'PPSM','cdg_alunos',LG=None)
-add_vlayer_to_group(FN_COS_PPSM,'COS_PPSM','cdg_alunos',LG=None)
+
+filtroTF=[re.search('^(COS|Cos|cos).(|_)(PPSM|ppsm).*(gpkg|shp)$', x) is not None for x in basefiles] 
+if sum(filtroTF) >0:
+    FN_COS_PPSM=max([i for (i, v) in zip(allfiles, filtroTF) if v],key=os.path.getmtime)
+    add_vlayer_to_group(FN_COS_PPSM,'COS_PPSM','cdg_alunos',LG=None)
+else:
+    QMessageBox.warning(parent,'nome ficheiro','ficheiro COS_PPSM indefinido')
+
+filtroTF=[re.search('^(IFN|Ifn|ifn).(|_)(PPSM|ppsm).*(gpkg|shp)$', x) is not None for x in basefiles] 
+if sum(filtroTF) >0:
+    FN_IFN_PPSM=max([i for (i, v) in zip(allfiles, filtroTF) if v],key=os.path.getmtime)
+    add_vlayer_to_group(FN_IFN_PPSM,'IFN_PPSM','cdg_alunos',LG=None)
+else:
+    QMessageBox.warning(parent,'nome ficheiro','ficheiro IFN_PPSM indefinido')
+
+filtroTF=[re.search('^(R.*F.*C|r.*f.*c)(|_)(PPSM|ppsm).*(gpkg|shp)$', x) is not None for x in basefiles] 
+if sum(filtroTF) >0:
+    FN=max([i for (i, v) in zip(allfiles, filtroTF) if v],key=os.path.getmtime)
+    add_vlayer_to_group(FN,'RPFGC_PPSM','cdg_alunos',LG=None)
+else:
+    QMessageBox.warning(parent,'nome ficheiro','ficheiro RPFGC_PPSM indefinido')
+
+filtroTF=[re.search('^(PPSM|ppsm).*(gpkg|shp)$', x) is not None for x in basefiles] 
+if sum(filtroTF) >0:
+    FN=max([i for (i, v) in zip(allfiles, filtroTF) if v],key=os.path.getmtime)
+    add_vlayer_to_group(FN,'PPSM','cdg_alunos',LG=None)
+else: 
+    QMessageBox.warning(parent,'nome ficheiro','ficheiro PPSM indefinido')
+
+filtroTF=[re.search('^(FAIXAS|Faixas|faixas).*(gpkg|shp)$', x) is not None for x in basefiles] 
+if sum(filtroTF) >0:
+    FN=max([i for (i, v) in zip(allfiles, filtroTF) if v],key=os.path.getmtime)
+    add_vlayer_to_group(FN,'Faixas','cdg_alunos',LG=lg)
+else: 
+    QMessageBox.warning(parent,'nome ficheiro','ficheiro FAIXAS indefinido')
+
+filtroTF=[re.search('^(FAD|Fad|fad).*(gpkg|shp)$', x) is not None for x in basefiles] 
+if sum(filtroTF) >0:
+    FN=max([i for (i, v) in zip(allfiles, filtroTF) if v],key=os.path.getmtime)
+    add_vlayer_to_group(FN,'FAD','cdg_alunos',LG=None)
+else: 
+    QMessageBox.warning(parent,'nome ficheiro','ficheiro FAD indefinido')
+
+filtroTF=[re.search('^(EURO|Euro|euro).*(Declive|DECLIVE|declive).*tif$', x) is not None for x in basefiles] 
+if sum(filtroTF) >0:
+    FN=max([i for (i, v) in zip(allfiles, filtroTF) if v],key=os.path.getmtime)
+    add_rlayer_to_group(FN,'EuroDeclive','cdg_alunos')
+else: 
+    QMessageBox.warning(parent,'nome ficheiro','ficheiro EuroDeclive indefinido')
+
+filtroTF=[re.search('^(EUROS|Euros|euros).*(m2|M2|.*).tif$', x) is not None for x in basefiles] 
+if sum(filtroTF) >0:
+    FN=max([i for (i, v) in zip(allfiles, filtroTF) if v],key=os.path.getmtime)
+    add_rlayer_to_group(FN,'Euros_m2','cdg_alunos')
+else: 
+    QMessageBox.warning(parent,'nome ficheiro','ficheiro Euros_m2 indefinido')
+
+filtroTF=[re.search('^(Declive|declive|DECLIVE).tif$', x) is not None for x in basefiles] 
+if sum(filtroTF) >0:
+    FN=max([i for (i, v) in zip(allfiles, filtroTF) if v],key=os.path.getmtime)
+    add_rlayer_to_group(FN,'declive','cdg_alunos')
+else: 
+    QMessageBox.warning(parent,'nome ficheiro','ficheiro DECLIVE indefinido')
+
+filtroTF=[re.search('^(mde|MDE|Mde).tif$', x) is not None for x in basefiles] 
+if sum(filtroTF) >0:
+    FN=max([i for (i, v) in zip(allfiles, filtroTF) if v],key=os.path.getmtime)
+    add_rlayer_to_group(FN,'mde','cdg_alunos')
+else: 
+    QMessageBox.warning(parent,'nome ficheiro','ficheiro MDE indefinido')
+
+
+
+
+
+
+
+
+
+'''
+
+plt.hist(custo_m2-bandEuros_array)
+plt.show()
+
+len(custo_m2[0])
+bandEuros_array.sum()
+(custo_m2-bandEuros_array).sum()
+
+
+DENSO_FRC_EXT	redução	arbóreo	DENSO	FRC_EXT	300
+DENSO_FRC_INT	redução	arbóreo	DENSO	FRC_INT	350
+MEDIO_FRC_INT	redução	arbóreo	MEDIO	FRC_INT	200
+DENSO_FIC	remoção	arbóreo	DENSO	FIC	0
+MEDIO_FIC	remoção	arbóreo	MEDIO	FIC	100
+ESPARSO_FIC	remoção	arbóreo	ESPARSO	FIC	150
+			Altura inicial		
+ALTO	remoção	não arbóreo	ALTO	FRC ou FIC	500
+BAIXO	remoção	não arbóreo	BAIXO	FRC ou FIC	250
+RASO	remoção	não arbóreo	RASO	FRC ou FIC	0
+
+'''
+
+
+'''
+# Import table
+# import manually and look at source at properties
+#uri = "file:///C:/Users/Manuel/Documents/geomatica/CascaisIn/ProdS.csv?encoding=System&type=csv&delimiter=;&maxFields=10000&detectTypes=yes&geomType=none&subsetIndex=no&watchFile=no"
+print(path2uri(FOLDER_AN,TN_PRODS,';'))
+#uri = urljoin('file:', urllib.request.pathname2url(os.path.join(FOLDER_AN,TN_PRODS)))+"?encoding=System&type=csv&delimiter=;&maxFields=10000&detectTypes=yes&geomType=none&subsetIndex=no&watchFile=no"
+uri=path2uri(FOLDER_AN,TN_PRODS,';')
+ProdS = QgsVectorLayer(uri, "ProdS", "delimitedtext")
+cascais.addMapLayer(ProdS)
+#uri = "file:////"+os.path.join(FOLDER_AN,TN_PROTRV)+"?encoding=System&type=csv&delimiter=,&maxFields=10000&detectTypes=yes&geomType=none&subsetIndex=no&watchFile=no"
+uri=path2uri(FOLDER_AN,TN_PROTRV,',')
+ProtRV = QgsVectorLayer(uri, "ProtRV", "delimitedtext")
+cascais.addMapLayer(ProtRV)
+'''
+
+
+######################################### processamento dos dados
+# processing algorithms - help
+# processing.algorithmHelp("native:saveselectedfeatures")
+'''
+for alg in QgsApplication.processingRegistry().algorithms():
+        if 'attribute' in alg.id():
+            print(alg.id(), "->", alg.displayName())
+processing.algorithmHelp("native:renametablefield")
+####################################################################
+
+# intersection
+processing.run("native:addfieldtoattributestable",\
+    {'INPUT': arboreo,\
+    'FIELD_NAME': 'densidade',\
+    'FIELD_TYPE': 2,\
+    'FIELD_LENGTH': 20,\
+    'OUTPUT': 'memory'})
+    
+    
+
+processing.run("native:intersection", \
+    {'INPUT': arboreo,\
+    'OVERLAY': naoarboreo,\
+    'OUTPUT': os.path.join(FOLDER_OUT,'all8classes.gpkg')})
+all8classes = iface.addVectorLayer(os.path.join(FOLDER_OUT,'all8classes.gpkg'),"", "ogr")
+
+cascais.removeMapLayer(usoAdeq)
+cascais.removeMapLayer(soloAdeq)
+
+
+
+# usoAdeq
+# can use extractbyexpression instead (see below)
+processing.run("qgis:selectbyexpression", \
+    {'INPUT':'UsoSolo',\
+    'EXPRESSION':f'{AN_USO_CODIGO} IN ( \'M\' , \'Fm\' , \'A\' , \'Iv\')',\
+    'METHOD':0})
+processing.run("native:saveselectedfeatures", \
+    {'INPUT':'UsoSolo',\
+    'OUTPUT':os.path.join(FOLDER_OUT,'usoAdeq.gpkg')})
+usoAdeq = iface.addVectorLayer(os.path.join(FOLDER_OUT,'usoAdeq.gpkg'),"", "ogr")
+cascais.removeMapLayer(UsoSolo)
+
+
+# join: returns CartaSolos with extra columns
+myJoin = QgsVectorLayerJoinInfo()
+myJoin.setJoinFieldName('COD1')
+myJoin.setTargetFieldName('COD1')
+myJoin.setJoinLayerId(ProdS.id())
+myJoin.setUsingMemoryCache(True)
+myJoin.setJoinLayer(ProdS)
+#myJoin.setJoinFieldNamesSubset(['Field_I_want_1', 'Field_I_want_2'])
+CartaSolos.addJoin(myJoin)
+
+# soloAdeq
+processing.run("native:extractbyexpression", \
+    {'INPUT': 'CartaSolos',\
+    'EXPRESSION':' \"ProdS_produtividade\" <>  \'Alta produtividade\' ',\
+    'OUTPUT':os.path.join(FOLDER_OUT,'soloAdeq.gpkg')})
+soloAdeq = iface.addVectorLayer(os.path.join(FOLDER_OUT,'soloAdeq.gpkg'),"", "ogr")
+cascais.removeMapLayer(CartaSolos)
+
+#usoSolos (clip)
+processing.run("native:clip", \
+    {'INPUT':'usoAdeq',\
+    'OVERLAY':'soloAdeq',\
+    'OUTPUT': os.path.join(FOLDER_OUT,'usoSolos.gpkg')})
+usoSolos = iface.addVectorLayer(os.path.join(FOLDER_OUT,'usoSolos.gpkg'),"", "ogr")
+cascais.removeMapLayer(usoAdeq)
+cascais.removeMapLayer(soloAdeq)
+
+# declives
+processing.run("native:extractbyexpression", \
+    {'INPUT': 'DecliveClasses',\
+    'EXPRESSION':' \"Classe_Dec\" =  \'Entre 0% e 5%\' ',\
+    'OUTPUT':os.path.join(FOLDER_OUT,'decliveAdeq.gpkg')})
+decliveAdeq = iface.addVectorLayer(os.path.join(FOLDER_OUT,'decliveAdeq.gpkg'),"", "ogr")
+cascais.removeMapLayer(DecliveClasses)
+
+#usoSolosDecl (clip)
+processing.run("native:clip", \
+    {'INPUT':'usoSolos',\
+    'OVERLAY':'decliveAdeq',\
+    'OUTPUT': os.path.join(FOLDER_OUT,'usoSolosDecl.gpkg')})
+usoSolosDecl = iface.addVectorLayer(os.path.join(FOLDER_OUT,'usoSolosDecl.gpkg'),"", "ogr")
+cascais.removeMapLayer(usoSolos)
+cascais.removeMapLayer(decliveAdeq)
+
+# RedeViaria join
+myJoin= QgsVectorLayerJoinInfo()
+myJoin.setJoinFieldName('Tipo')
+myJoin.setTargetFieldName('Tipo')
+myJoin.setJoinLayerId(ProtRV.id())
+myJoin.setUsingMemoryCache(True)
+myJoin.setJoinLayer(ProtRV)
+#myJoin.setJoinFieldNamesSubset(['Field_I_want_1', 'Field_I_want_2'])
+RedeViaria.addJoin(myJoin)
+
+# buffer
+processing.run("native:buffer", \
+    {'INPUT':'RedeViaria',\
+    'DISTANCE':QgsProperty.fromExpression('ProtRV'+'_'+AN_PROTRV_DIST),\
+    'SEGMENTS':5,\
+    'END_CAP_STYLE':0,\
+    'JOIN_STYLE':0,\
+    'MITER_LIMIT':2,\
+    'DISSOLVE':True,\
+    'OUTPUT':os.path.join(FOLDER_OUT,'bufferRV.gpkg')})
+bufferRV = iface.addVectorLayer(os.path.join(FOLDER_OUT,'bufferRV.gpkg'),"", "ogr")
+cascais.removeMapLayer(RedeViaria)
+cascais.removeMapLayer(ProtRV)
+
+# difference
+processing.run("native:difference", \
+    {'INPUT':'usoSolosDecl',\
+    'OVERLAY':'bufferRV',\
+    'OUTPUT':os.path.join(FOLDER_OUT,'RegiaoAdeq.gpkg')})
+RegiaoAdeq = iface.addVectorLayer(os.path.join(FOLDER_OUT,'RegiaoAdeq.gpkg'),"", "ogr")
+cascais.removeMapLayer(bufferRV)
+cascais.removeMapLayer(usoSolosDecl)
+
+# dissolve all
+processing.run("native:dissolve", \
+    {'INPUT':'RegiaoAdeq',\
+    'FIELD':[],\
+    'OUTPUT':os.path.join(FOLDER_OUT,'RegiaoAdeq2.gpkg')})
+RegiaoAdeq2 = iface.addVectorLayer(os.path.join(FOLDER_OUT,'RegiaoAdeq2.gpkg'),"", "ogr")
+    
+# multipart to singlepart
+processing.run("native:multiparttosingleparts", \
+    {'INPUT':'RegiaoAdeq2',\
+    'OUTPUT':os.path.join(FOLDER_OUT,'RegiaoAdeq3.gpkg')})
+RegiaoAdeq3 = iface.addVectorLayer(os.path.join(FOLDER_OUT,'RegiaoAdeq3.gpkg'),"", "ogr")
+cascais.removeMapLayer(RegiaoAdeq)
+cascais.removeMapLayer(RegiaoAdeq2)
+
+# linhas de água principais
+processing.run("qgis:selectbyexpression", \
+    {'INPUT':'LAgua',\
+    'EXPRESSION':' \"Tipo\" = \'Principais\' ',\
+    'METHOD':0})
+processing.run("native:saveselectedfeatures", \
+    {'INPUT':'LAgua',\
+    'OUTPUT':os.path.join(FOLDER_OUT,'LAPrincipais.gpkg')})
+LAPrincipais = iface.addVectorLayer(os.path.join(FOLDER_OUT,'LAPrincipais.gpkg'),"", "ogr")
+cascais.removeMapLayer(LAgua)
+
+# features que intersectam LA proncipais
+processing.run("native:extractbylocation", \
+    {'INPUT':'RegiaoAdeq3',\
+    'PREDICATE':[0],\
+    'INTERSECT':'LAPrincipais',\
+    'OUTPUT':os.path.join(FOLDER_OUT,'RegiaoFinal.gpkg')})
+RegiaoFinal = iface.addVectorLayer(os.path.join(FOLDER_OUT,'RegiaoFinal.gpkg'),"", "ogr")
+cascais.removeMapLayer(RegiaoAdeq3)
+
+# calcular area: exportaddgeometrycolumns creates column "area"
+processing.run("qgis:exportaddgeometrycolumns", \
+    {'INPUT':'RegiaoFinal',\
+    'CALC_METHOD':2,\
+    'OUTPUT':os.path.join(FOLDER_OUT,'RegiaoFinal2.gpkg')})
+RegiaoFinal2 = iface.addVectorLayer(os.path.join(FOLDER_OUT,'RegiaoFinal2.gpkg'),"", "ogr")
+cascais.removeMapLayer(RegiaoFinal)
+
+# linhas de água principais
+processing.run("qgis:extractbyexpression", \
+    {'INPUT':'RegiaoFinal2',\
+    'EXPRESSION':' \"area\" >300000 ',\
+    'METHOD':0, \
+    'OUTPUT':os.path.join(FOLDER_OUT,'Final.gpkg')})
+Final = iface.addVectorLayer(os.path.join(FOLDER_OUT,'Final.gpkg'),"", "ogr")
+
+# create new attribute for the area with PyQGIS
+Final.dataProvider().addAttributes([QgsField("myArea", QVariant.Double)]) # does not do anything
+Final.updateFields() # now, there is anew fieal mArea will NULL values
+# Recreate the list field by the name to have index of the field
+fields_name = [f.name() for f in Final.fields()] # ['fid', 'CODIGO', 'area', 'perimeter', 'myArea']
+# we get the index of the Area field
+fareaidx = fields_name.index('myArea') #4
+
+d = QgsDistanceArea()
+d.setEllipsoid('WGS84')
+for feat in Final.getFeatures():
+    geom = feat.geometry()
+    #print("d.measureArea (m2):", d.measureArea(geom))
+    #print("geom.area (m2):", geom.area())
+    # For each feature :
+    # We calculate the area and put the index of the field Area
+    # We round the area value by 2 digit
+    attr = {fareaidx : round(feat.geometry().area(), 2)}
+    # We change the the value of Area Field for this feature.
+    Final.dataProvider().changeAttributeValues({feat.id() : attr})
+
+################################ resolução 2a parte trabalho 2018
+
+
+import processing
+
+print(os.getcwd())
+
+# pasta de trabalho
+data_folder = 'C:/Users/mlc/Documents/temp2/projectoII20182019/'
+#data_folder = 'C:\\Users\\mlc\\Documents\\QGIS\\projectoII20182019\\'
+#data_folder = os.getcwd() # working directory
+
+"""
+for alg in QgsApplication.processingRegistry().algorithms():
+        print(alg.id(), "->", alg.displayName())
+# help 
+processing.algorithmHelp("gdal:rastercalculator")
+"""
+
+# mosaic of the two SRTM
+myresult = processing.run("gdal:merge", 
+    { 'DATA_TYPE' : 5, 
+    'INPUT' : ['n39_w009_1arc_v3.tif','n39_w010_1arc_v3.tif'], # tem que estar na paste de trabalho por omissão
+    'NODATA_INPUT' : None, 
+    'NODATA_OUTPUT' : None, 
+    'OPTIONS' : '', 
+    'OUTPUT' : 'srtm.tif', 
+    'PCT' : False, 
+    'SEPARATE' : False })
+
+rlayer= iface.addRasterLayer('srtm.tif')
+
+
+# tinpertolation sobre dados topográficos
+myresult = processing.run("qgis:tininterpolation", 
+            {   'COLUMNS': 1132,
+                #'EXTENT': '-85738.39830386027,-74412.98369199589,-57080.26269691635,-47859.65423535258 ',
+                'EXTENT': data_folder + 'Limite_DTM.shp',
+                'INTERPOLATION_DATA': data_folder +  'Curvas_nivel_singlepart.shp::~::0::~::1::~::1;' + data_folder + 'Linhas_agua_singlepart.shp::~::1::~::-1::~::2;' + data_folder + 'Pontos_cotados.shp::~::0::~::1::~::0',
+                'METHOD': 0,
+                'OUTPUT': data_folder + 'mde10m.tif',
+                'ROWS': 922,
+                'TRIANGULATION': data_folder +'triangw10.gpkg',
+                })
+
+
+# reamostrar mde10 para 10m
+myresult = processing.run("gdal:warpreproject",
+    { 
+    'DATA_TYPE' : 0, 
+    'INPUT' : data_folder + 'mde10m.tif', 
+    'OUTPUT' : data_folder + 'mde10alinhado.tif', 
+    'RESAMPLING' : 4, 
+    'TARGET_CRS' : 'EPSG:3763', 
+    'TARGET_EXTENT' : data_folder + 'Limite_DTM.shp', #'-85740,-74400,-57080,-47860', 
+    'TARGET_EXTENT_CRS' : 'EPSG:3763',
+    'TARGET_RESOLUTION' : 10 })
+ 
+rlayer= iface.addRasterLayer(data_folder + 'mde10alinhado.tif') 
+print(rlayer.extent())
+print(rlayer.rasterUnitsPerPixelX())
+#extent=rlayer.extent()
+#min_x=extent.xMinimum()
+#max_x=extent.xMaximum()
+#min_y=extent.yMinimum()
+#max_y=extent.yMaximum()
+# print (min_x,min_y,max_x,max_y)
+
+# reamostrar srtm para 10m e 3763
+myresult = processing.run("gdal:warpreproject",
+    { 
+    'DATA_TYPE' : 0, 
+    'INPUT' : data_folder + 'srtm.tif', 
+    'OUTPUT' : data_folder + 'srtm10alinhado.tif', 
+    'RESAMPLING' : 4, 
+    'TARGET_CRS' : 'EPSG:3763', 
+    'TARGET_EXTENT' : data_folder + 'Limite_DTM.shp', #'-85740,-74400,-57080,-47860', 
+    'TARGET_EXTENT_CRS' : 'EPSG:3763',
+    'TARGET_RESOLUTION' : 10 })
+rlayer= iface.addRasterLayer(data_folder + 'srtm10alinhado.tif') 
+print(rlayer.extent())
+print(rlayer.rasterUnitsPerPixelX())
+
+myresult = processing.run("gdal:cliprasterbymasklayer",
+    { 
+    'ALPHA_BAND' : False, 
+    'CROP_TO_CUTLINE' : True, 
+    'DATA_TYPE' : 0, 
+    'INPUT' : data_folder + 'mde10alinhado.tif', 
+    'KEEP_RESOLUTION' : True, 
+    'MASK' : data_folder + 'Limite_DTM.shp', 
+    'NODATA' : -9999, 
+    'OPTIONS' : '', 
+    'OUTPUT' : data_folder + 'mde10lim.tif' })
+rlayer= iface.addRasterLayer(data_folder + 'mde10lim.tif') 
+print(rlayer.extent())
+print(rlayer.rasterUnitsPerPixelX())
+
+myresult = processing.run("gdal:cliprasterbymasklayer",
+    { 
+    'ALPHA_BAND' : False, 
+    'CROP_TO_CUTLINE' : True, 
+    'DATA_TYPE' : 0, 
+    'INPUT' : data_folder + 'srtm10alinhado.tif', 
+    'KEEP_RESOLUTION' : True, 
+    'MASK' : data_folder + 'Limite_DTM.shp', 
+    'NODATA' : -9999, 
+    'OPTIONS' : '', 
+    'OUTPUT' : data_folder + 'srtm10lim.tif' })
+    
+rlayer= iface.addRasterLayer(data_folder + 'srtm10lim.tif') 
+print(rlayer.extent())
+print(rlayer.rasterUnitsPerPixelX())
+
+# calcular diferença com raster calculator 
+myresult = processing.run("gdal:rastercalculator",
+   { 'BAND_A' : 1, 
+   'BAND_B' : 1, 
+   'FORMULA' : 'B-A', 
+   'INPUT_A' : data_folder + 'srtm10lim.tif', 
+   'INPUT_B' : data_folder + 'mde10lim.tif',  
+   'NO_DATA' : -9999, 
+   'OPTIONS' : '', 
+   'OUTPUT' : data_folder + 'dif10m.tif', 
+   'RTYPE' : 6 })
+rlayer= iface.addRasterLayer(data_folder + 'dif10m.tif') 
+print(rlayer.extent())
+print(rlayer.rasterUnitsPerPixelX())
+
+processing.run("qgis:zonalstatistics", {
+    'INPUT_RASTER':  data_folder + 'dif10m.tif',
+    'RASTER_BAND':1,
+    'INPUT_VECTOR':  data_folder + 'Limite_DTM.shp',
+    'COLUMN_PREFIX':'_',
+    'STATS':[0,1,2,4]})
+vlayer = iface.addVectorLayer(data_folder + 'Limite_DTM.shp', "", "ogr")
+iterator = vlayer.getFeatures(QgsFeatureRequest().setFilterFid(0)) #  1 is the second feature (zero based indexing!)
+feature = next(iterator)
+print(feature['_mean'],feature['_stdev'])
+
+# COS: extrair urbano
+vlayer = iface.addVectorLayer(data_folder + 'COS2015-V1-PT16B_Oeste.shp', "", "ogr")
+vlayer.dataProvider().setEncoding("ISO-8859-1")
+processing.run("native:extractbyattribute", 
+    {'INPUT':'COS2015-V1-PT16B_Oeste.shp',
+    'FIELD':'COS2015_Le',
+    'OPERATOR':6,
+    'VALUE':'Tecido urbano',
+    'OUTPUT':'urbano.shp'})
+vlayer = iface.addVectorLayer('urbano.shp', "", "ogr")
+
+# determinar buffer de urbano
+myresult = processing.run("native:buffer", 
+            {'INPUT': 'urbano.shp',
+              'DISTANCE': 100.0,
+              'SEGMENTS': 10,
+              'DISSOLVE': True,
+              'END_CAP_STYLE': 0,
+              'JOIN_STYLE': 0,
+              'MITER_LIMIT': 10,
+              'OUTPUT': 'buf100urbano.shp'})
+vlayer = iface.addVectorLayer('buf100urbano.shp', "", "ogr")
+
+# poderia ser um ciclo for tipo in ['Tecido urbano''Floresta']: e extrair em cada volta
+# COS: extrair floresta
+processing.run("native:extractbyattribute", 
+    {'INPUT':'COS2015-V1-PT16B_Oeste.shp',
+    'FIELD':'COS2015_Le',
+    'OPERATOR':6,
+    'VALUE':'Floresta',
+    'OUTPUT':'floresta.shp'})
+vlayer = iface.addVectorLayer('floresta.shp', "", "ogr")
+
+# fazer clip da floresta pelo buffer de urbano # demora -- seria mais rápido fazer clip por Cadaval 1o
+processing.run("native:clip", 
+    {'INPUT':'floresta.shp',
+    'OVERLAY':'buf100urbano.shp',
+    'OUTPUT':'FlorestaControlar.shp'})
+vlayer = iface.addVectorLayer('FlorestaControlar.shp', "", "ogr")
+
+# CAOP: extrair Cadaval
+vlayer = iface.addVectorLayer('Cont_AAD_CAOP2018.shp', "", "ogr")
+vlayer.dataProvider().setEncoding("ISO-8859-1")
+processing.run("native:extractbyattribute", 
+    {'INPUT':'Cont_AAD_CAOP2018.shp',
+    'FIELD':'Concelho',
+    'OPERATOR':0,
+    'VALUE':'CADAVAL',
+    'OUTPUT':'cadaval.shp'})
+vlayer = iface.addVectorLayer('cadaval.shp', "", "ogr")
+
+# fazer clip da FlorestaControlar pelo Cadaval
+processing.run("native:clip", 
+    {'INPUT':'FlorestaControlar.shp',
+    'OVERLAY':'cadaval.shp',
+    'OUTPUT':'FlorestaControlarCadaval.shp'})
+vlayer = iface.addVectorLayer('FlorestaControlarCadaval.shp', "", "ogr")
+
+processing.run("saga:polygondissolveallpolygons", 
+    {'POLYGONS':'FlorestaControlarCadaval.shp',
+    'BND_KEEP':False,
+    'DISSOLVED':'FlorestaControlarCadavalDissolve.shp'})
+vlayer = iface.addVectorLayer('FlorestaControlarCadavalDissolve.shp', "", "ogr")
+
+#reamostrar srtm para 10m e 3763 para Cadaval
+myresult = processing.run("gdal:warpreproject",
+    { 
+    'DATA_TYPE' : 0, 
+    'INPUT' : data_folder + 'srtm.tif', 
+    'OUTPUT' : data_folder + 'srtm10cadaval.tif', 
+    'RESAMPLING' : 4, 
+    'TARGET_CRS' : 'EPSG:3763', 
+    'TARGET_EXTENT' : data_folder + 'cadaval.shp', #'-85740,-74400,-57080,-47860', 
+    'TARGET_EXTENT_CRS' : 'EPSG:3763',
+    'TARGET_RESOLUTION' : 10 })
+rlayer= iface.addRasterLayer(data_folder + 'srtm10cadaval.tif') 
+print(rlayer.extent())
+print(rlayer.rasterUnitsPerPixelX())
+
+myresult =  processing.run("gdal:slope", 
+    {'INPUT':'srtm10cadaval.tif',
+    'BAND':1,
+    'SCALE':1,
+    'AS_PERCENT':True,
+    'COMPUTE_EDGES':False,
+    'ZEVENBERGEN':False,
+    'OPTIONS':'',
+    'OUTPUT':'slope10cadaval.tif'})
+rlayer= iface.addRasterLayer(data_folder + 'slope10cadaval.tif') 
+
+processing.run("qgis:rastercalculator", 
+    {'EXPRESSION':'(\"slope10cadaval@1\" <= 5) * 3.83 + (\"slope10cadaval@1\" >=  25) * 11.5 + (\"slope10cadaval@1\" > 5  AND  \"slope10cadaval@1\" < 25) * (3.83 + ( \"slope10cadaval@1\" - 5 ) *  0.3835 ) ',
+    'LAYERS': 'slope10cadaval.tif',
+    'CELLSIZE':0,
+    'EXTENT':None,
+    'CRS':None,
+    'OUTPUT':'custo.tif'})
+rlayer= iface.addRasterLayer('custo.tif') 
+
+processing.run("qgis:zonalstatistics", {
+    'INPUT_RASTER':  'custo.tif',
+    'RASTER_BAND':1,
+    'INPUT_VECTOR': 'FlorestaControlarCadavalDissolve.shp',
+    'COLUMN_PREFIX':'_',
+    'STATS':[0,1,2,4]})
+vlayer = iface.addVectorLayer('FlorestaControlarCadavalDissolve.shp', "", "ogr")
+iterator = vlayer.getFeatures(QgsFeatureRequest().setFilterFid(0)) #  1 is the second feature (zero based indexing!)
+feature = next(iterator)
+print(feature['_mean'],feature['_sum'])
+
+# https://anitagraser.com/pyqgis-101-introduction-to-qgis-python-programming-for-non-programmers/pyqgis-101-viewing-vector-layer-attributes/
+iface.showAttributeTable(vlayer)
+for field in vlayer.fields():
+    print(field.name())
+
+
+# add to project
+# vlayer = iface.addVectorLayer(data_folder + 'cadaval_buffer.gpkg', "", "ogr")
+# rlayer= iface.addRasterLayer(data_folder + 'mde10m.tif')
+
+layers = iface.mapCanvas().layers() 
+print(layers)
+for layer in layers: 
+    print(layer) 
+    print(layer.name()) 
+    print(layer.id()) 
+    print('------') 
+
+'''
+
+#####################################  EXTRA
+################################################### iface
+# iface and QgsProject.instance()
+#vlayer = QgsVectorLayer(filename, '', 'ogr')
+#QgsProject.instance().addMapLayer(vlayer)
+#is the same as 
+#vlayer = iface.addVectorLayer(filename, '', "ogr")
+#################################################### access some layer by name
+# são a mesma coisa:
+#layers=QgsProject.instance().mapLayersByName("PPSM")
+#layers=myproj.mapLayersByName("PPSM")
+# returns a list of QgsVectorLayer
+#layers[0].isValid()
+####################################  WFS
+#url = "https://geo.barentswatch.no/geoserver/bw/ows?srsname=EPSG:4326&typename=bw:npdsurveyongoing_latest&version=1.0.0&request=vlayer=QgsVectorLayer"
+#vlayer = QgsVectorLayer(uri, "bw:npdsurveyongoing_latest", "WFS")
+#QgsMapLayerRegistry.instance().addMapLayer(vlayer)
+
+# create a new geopackage file from a layerfrom qgis.core import QgsVectorLayer, QgsVectorFileWriter
+#def deepCopyVectorLayer():
+#    ml = QgsVectorLayer('Point?field=firstfield:int&field=secondfield:int',
+#    'test', 'memory')
+#    filename = '/tmp/testing.gpkg'
+#    options = QgsVectorFileWriter.SaveVectorOptions()
+#    options.driverName = 'GPKG'
+#    options.layerName = 'test'
+#    QgsVectorFileWriter.writeAsVectorFormat(ml,filename,options)
+#    write_result == QgsVectorFileWriter.NoError
+#
+# QgsVectorFileWriter.writeAsVectorFormat(layer, "output_path", "UTF-8", layer.crs(), "ESRI Shapefile")
+
+#print(myarboreo.fields().names())
+#QgsVectorFileWriter.writeAsVectorFormat(layer, "output_path", "UTF-8", layer.crs(), "ESRI Shapefile")
+# funciona
+#QgsVectorFileWriter.writeAsVectorFormat(PPSM, os.path.join(FOLDER_OUT,'PPSM.gpkg'),'ogr')
+
 
