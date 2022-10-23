@@ -5,7 +5,7 @@ from jellyfish import damerau_levenshtein_distance as dldist
 import numpy as np
 
 INPUT2=r'C:\temp\DOWNLOAD_GDrive_69Gb-13mai2022_unzip_INPUT2'
-INPUT0=r'C:\temp\SYNC_Gdrive_BIN_7out2022_181Gb_INPUT1' # ponto de partida se INPUT 1 começar mais abaixo nas pastas
+INPUT0=r'C:\temp\SYNC_Gdrive_BIN_7out2022_181Gb_INPUT1' # ponto de partida se INPUT 1 comeÃ§ar mais abaixo nas pastas
 INPUT1=r'C:\temp\SYNC_Gdrive_BIN_7out2022_181Gb_INPUT1'
 #
 OUTPUT=r'C:\temp\OUTPUT'
@@ -86,7 +86,7 @@ for FIN2, dirnames, FIN2files in os.walk(INPUT2):
     # FOUT exists
     FOUT=ALLFOLDERSOUTPUTFULL[argminMatch]
   if minMatch>0:
-    FOUT=os.path.join(OUTPUT,shortFIN2)
+    FOUT=os.path.join(OUTPUT,shortFIN2) # main issue: it could be a different choice of FOUT
     FN=ALLFOLDERSOUTPUTFULL[argminMatch]
     shortFN=os.path.relpath(FN,start=OUTPUT)
     # if dldist(shortFIN2,shortFN)>0:
@@ -122,7 +122,7 @@ print('tooLong',tooLong)
 #   for item in newFolders:
 #     fp.write('%s\n' % item)
 # 
-# len('C:\temp\OUTPUT\aulas\geomatica-sigdr-E-qgis3-em-portugues-E-PyQGIS\QGIS 3 em português\Dados para exercícios\Secção 6.2 - Representação cartográfica do relevo e modelos digitais de elevação\SmallGFiles')
+# len('C:\temp\OUTPUT\aulas\geomatica-sigdr-E-qgis3-em-portugues-E-PyQGIS\QGIS 3 em portuguÃªs\Dados para exercÃ­cios\SecÃ§Ã£o 6.2 - RepresentaÃ§Ã£o cartogrÃ¡fica do relevo e modelos digitais de elevaÃ§Ã£o\SmallGFiles')
 
 # #len('C:\\temp\\INPUT2\\pessoal\\administrativo-casas-docs-impostos-bolsas-saude-escolas\\emma-isabel-henri-schools-grants\\emma-estudos-bolsas\\Crous-DSE\\demande-mars-2020\\copias-docs-isabel\\Copy of Bulletin_CAMPAGNOLO_Henri_T1-08-02-2007_MANUEL_LAMEIRAS_DE_FIGUEIREDO_Campagnolo__29965.pdf')
 # a='pessoal\\documentos mo familiares\\livros-mo-h-portugal-paris\\alcobaca-apartamento-2021\\lombadas'
