@@ -7,7 +7,7 @@ from sklearn.preprocessing import LabelEncoder
 
 # df is  the sample matrix (n_obs,n_variables) 
 # nomeVarResposta is 'Tipo' (df.Tipo): the values are strings (they are the classes of interest)
-#  if all variables are used, idxInicioBandas=0, Otherwise, idxInicioBandas is the index of first column of df  to consider
+# could be 1st column for the response variable "nomeVarResposta" and idxInicioBandas=1. Columns to use for LDA have indices [idxInicioBandas:]
 # lda: linear combination of features that characterizes or separates the classes
 # X_lda: matrix n*k, with k= (n° of classes - 1); each column is the component on the k-th discriminate axis
 # target_names are the class names (from df.Tipo)
