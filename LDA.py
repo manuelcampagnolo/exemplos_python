@@ -45,6 +45,39 @@ def convertXtoDf(X_lda,df,idxInicioBandas):
     df_lda.drop('index', inplace=True, axis=1)
   return df_lda
 
+def ScatterPlot(X_lda, y, nomesClasses, indicesClasses, coresClasses,axis1,axis2): 
+  plt.figure()
+  for color, i, target_name in zip(coresClasses, indicesClasses, nomesClasses):
+      plt.scatter(
+          X_lda[y == i, axis1], X_lda[y == i, axis2], alpha=0.8, color=color, label=target_name
+      )
+  plt.legend(loc="best", shadow=False, scatterpoints=1)
+  plt.title("LDA")
+  plt.show()
+
+# Output: spectral signature for each  class 
+# graphic of the mean spectral signature and standard deviation 
+def SpectralSignature(mydf, idxInicioBandas,nomeVarResposta, nomesClasses,coresClasses,Title):
+  df=mydf.copy() # to avoid indexing mydf
+  df.set_index(nomeVarResposta, inplace=True)
+  for nomeClasse in nomesClasses: 
+    mycolor=coresClasses[list(nomesClasses).index(nomeClasse)]
+    classedf=df.loc[nomeClasse]
+    X = np.array(classedf.iloc[:,(idxInicioBandas-1):])
+    #if nomeClasse=='doente' : print(X)
+    means=X.mean(axis=0)
+    stds=X.std(axis=0)
+    bandNumbers=df.columns.to_list()[(idxInicioBandas-1):]
+    #if nomeClasse=='doente' :  print(bandNumbers)
+    bandas=np.asarray([float(i) for i in bandNumbers])
+    plt.plot(bandas, means, label= nomeClasse,color=mycolor)
+    plt.fill_between(bandas, means-stds,means+stds, alpha=0.1,color=mycolor)
+  if Title=='Spectral signatures': 
+    plt.xlabel('Wavelenght (nm)')
+    plt.ylabel('Reflectance (\u2031)')
+  plt.legend()
+  plt.title(Title)
+
 # Processing
 # compute LDA components
 X_lda, y, nomesClasses, indicesClasses, lda, X = comp_discrim(df,nomeVarResposta, idxInicioBandas)
