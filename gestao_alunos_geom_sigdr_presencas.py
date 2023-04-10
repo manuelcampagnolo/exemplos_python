@@ -3,7 +3,9 @@ import os
 import numpy as np
 import openpyxl
 from openpyxl.utils.dataframe import dataframe_to_rows
+from openpyxl.styles import PatternFill, Border, Side, Alignment, Protection, Font, colors
 from datetime import datetime
+from openpyxl.utils import get_column_letter, column_index_from_string, coordinate_to_tuple
 
 
 ########################################################################### functions (não usado)
@@ -14,6 +16,46 @@ def df_to_excel(df, ws, header=True, index=True, startrow=0, startcol=0):
     for r_idx, row in enumerate(rows, startrow + 1):
         for c_idx, value in enumerate(row, startcol + 1):
              ws.cell(row=r_idx, column=c_idx).value = value
+
+def create_workbook_from_dataframe(df):
+    """
+    1. Create workbook from specified pandas.DataFrame
+    2. Adjust columns width to fit the text inside
+    3. Make the index column and the header row bold
+    4. Fill background color for the header row
+
+    Other beautification MUST be done by usage side.
+    """
+    workbook = openpyxl.Workbook()
+    ws = workbook.active
+
+    rows = dataframe_to_rows(df.reset_index(), index=False)
+    col_widths = [0] * (len(df.columns) + 1)
+    for i, row in enumerate(rows, 1):
+        for j, val in enumerate(row, 1):
+
+            if type(val) is str:
+                cell = ws.cell(row=i, column=j, value=val)
+                col_widths[j - 1] = max([col_widths[j - 1], len(str(val))])
+            elif hasattr(val, "sort"):
+                cell = ws.cell(row=i, column=j, value=", ".join(list(map(lambda v: str(v), list(val)))))
+                col_widths[j - 1] = max([col_widths[j - 1], len(str(val))])
+            else:
+                cell = ws.cell(row=i, column=j, value=val)
+                col_widths[j - 1] = max([col_widths[j - 1], len(str(val)) + 1])
+
+            # Make the index column and the header row bold
+            if i == 1 or j == 1:
+                cell.font = Font(bold=True)
+
+    # Adjust column width
+    for i, w in enumerate(col_widths):
+        letter = get_column_letter(i + 1)
+        ws.column_dimensions[letter].width = w
+
+    return workbook
+
+
 
 ############################################################################ inputs
 xls_alunos_geom="students_1696_Geomática.2023-04-07_06-45-03_472.xlsx"
@@ -65,32 +107,46 @@ df=df_insc[vars_insc].merge(df_2022[vars_2022], how='left',on='Número')
 df=df.merge(df_pres[vars_pres], how='left',on='Número')
 df['Turma']=df['Turma'].astype('string')
 # exportar para Excel
-df.sort_values(by='Turma').to_excel('alunos_estado_'+datetime.today().strftime('%Y-%m-%d')+'nao_editar.xlsx')
+df.fillna("-",inplace=True)
+df=df.sort_values(by='Turma')#.to_excel('aux.xlsx')
+for var in ['Unidade 1', 'unidade 2', 'unidade 3']:
+    df[var].replace(1, 'sim', inplace=True)
+    df[var].replace('1', 'sim', inplace=True)
+    df[var].replace('SIM', 'sim', inplace=True) 
+#https://foss.heptapod.net/openpyxl/openpyxl/-/issues/1772
+# convert to string because df. applymap(str) do not like cetegories
+
+df=df. applymap(str) 
+df = df.reset_index(drop=True) # remove index column
+
+wb=create_workbook_from_dataframe(df)
+
+# change sheet name?
+
 
 '''
-# alunos 2022-2023
-#print(df_geom.head()) # Número       Nome     Email   Email Institucional  ... Nº Inscrições  Tipo Inscrição
-df_geom=pd.read_csv(os.path.join(path,'students_1696_Geomatica.2023-03-10_07-20-18_469_10mar.csv'),delimiter=';', encoding = 'unicode_escape')
-df_sigdr=pd.read_csv(os.path.join(path,'students_SIGDR_2023-03-10_07-20-51_162.csv'),delimiter=';', encoding = 'unicode_escape')
-print('número inscritos: ',df_geom.shape[0], df_sigdr.shape[0])
-df_insc=pd.concat([df_geom,df_sigdr])
+# formatar output
+wb = openpyxl.Workbook()
+namews=datetime.today().strftime('%Y-%m-%d')
+wb.create_sheet(namews)
+ws=wb[namews]
+
+for row in dataframe_to_rows(df, header = True, index=False):
+    ws.append(row)
+
+# headers
+[c.value for c in next(ws.iter_rows(min_row=1, max_row=1))]
+
+ws.column_dimensions['Nome'].width = 8
+ws.column_dimensions['Estatutos'].width = 5
+ws.column_dimensions['Frequência'].width = 12
+for colname in ['Trab_2019-2020', 'Trab_2020-2021','Trab_2021_2022']:
+    ws.column_dimensions[colname].width = len('Trab_2019-2020')
 
 
-print(df_2022.head()) # Número GrupoTurma  Trab_2019-2020  Trab_2020-2021  Trab_2021_2022  Nota trabalho ... Frequência ... Resultado
-print(df_2022.isna().sum())
-sum(df_2022.Frequência=='Frequência') # 170
-
-#Criar lista de alunos de 2022_2023 que ainda não têm frequência
-# Alunos de 2023 - os que têm frequência de 2022
-
-df=df_insc[vars_insc].copy()
-# alunos inscritos com estatuto especial
-df[~df.Estatutos.isna()]
-
-L=[]
-for i in range(df.shape[0]):
-    if df['Número'].iloc[i] not in df_2022[df_2022.Frequência=='Frequência']['Número']: 
-        L.append(df['Número'].iloc[i])
-
-print(len(L), df.shape[0])
+if 'Sheet' in wb.sheetnames:  # remove default sheet
+    wb.remove(wb['Sheet'])
 '''
+
+fnout='alunos_estado_'+datetime.today().strftime('%Y-%m-%d')+'_nao_editar.xlsx'
+wb.save(fnout)
