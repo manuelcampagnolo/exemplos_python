@@ -1,4 +1,9 @@
-# https://stackoverflow.com/questions/42344041/how-to-copy-worksheet-from-one-workbook-to-another-one-using-openpyxl
+######################################################
+# Manuel Campagnolo (abril 2023)
+# ISA/ULIsboa
+# script para preparar ficheiro Excel DSD ISA 2023-2024
+#######################################################
+
 
 import openpyxl
 from openpyxl.worksheet.datavalidation import DataValidation
@@ -364,7 +369,7 @@ if True:
             for colpreencher in colunas_horas_a_preencher:
                 idx=headers.index(colpreencher)
                 dt=target_sheet.cell(k+1,idx+1)
-                if False: #DSDv1:
+                if DSDv1:
                     d1=ws1.cell(k+1,idx+1) # mesma célula
                     if not d1.protection.locked and d1.value is not None and d1.value != '':
                         dt.value=d1.value
@@ -462,9 +467,9 @@ if 'Sheet' in wb_target.sheetnames:  # remove default sheet
 
 # proteger
 target_sheet.protection.sheet = True
-target_sheet.protection.password = 'password'
+target_sheet.protection.password = 'kathleen'
 info_sheet.protection.sheet = True
-info_sheet.protection.password = 'password'
+info_sheet.protection.password = 'kathleen'
 
 # gravar para ficheiro
 wb_target.save(fnOut)
