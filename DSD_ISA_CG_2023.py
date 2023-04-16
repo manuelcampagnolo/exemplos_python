@@ -1,24 +1,23 @@
-# Manuel Campagnolo, 2023
-# Input: ficheiro Excel Académica
-# Output: ficheiro excel DSD
-
 # https://stackoverflow.com/questions/42344041/how-to-copy-worksheet-from-one-workbook-to-another-one-using-openpyxl
 
 import openpyxl
 from openpyxl.worksheet.datavalidation import DataValidation
 from openpyxl.utils import get_column_letter, column_index_from_string, coordinate_to_tuple
 from openpyxl.worksheet.dimensions import ColumnDimension, DimensionHolder
+from openpyxl.styles import Protection
 from copy import copy
 import os
 
-# ficheiros d einput e output
+
 # folder not necessary when working in a folder
 #folder=r"C:\Users\mlc\OneDrive - Universidade de Lisboa\Documents\profissional-isa-cv\cg-isa"
 #pathIn=os.path.join(folder,"DSD_2324_.xlsx")
 #pathOut=os.path.join(folder,"DSD_2324_new.xlsx")
 fnIn="DSD_2324_.xlsx"
-fnIn="DSD_2324_ML_5abr2023_.xlsx"
-fnOut="DSD_2324_ML_5abr2023_new.xlsx"
+fnDSDv1="DSD_v1_teste.xlsx"; DSDv1=True
+fnIn="DSD_2324_ML_12abr2023__.xlsx"
+fnOut="DSD_2324_ML_12abr2023_new.xlsx"
+fnOut="DSD_v2_teste.xlsx"
 
 ############################################################ funcoes
 # devolve letra da coluna com nome (1a linha) da worksheet ws
@@ -26,7 +25,6 @@ def nomeColuna2letter(ws,nome):
     headers = [c.value for c in next(ws.iter_rows(min_row=1, max_row=1))]
     idx=headers.index(nome)
     return get_column_letter(idx+1)
-
 
 # copy column named nameCol to a a column located at colLetter
 def copyColumn(ws,nameCol,colLetter,colType=None):
@@ -42,7 +40,6 @@ def copyColumn(ws,nameCol,colLetter,colType=None):
                 ws.cell(row=cell.row, column=column_index_from_string(colLetter), value=cell.value)
         else:
             ws.cell(row=cell.row, column=column_index_from_string(colLetter), value=cell.value)
-
 
 def copy_sheet(source_sheet, target_sheet, idx):
     rows_resp=copy_cells(source_sheet, target_sheet, idx)  # copy all the cel values and styles
@@ -95,7 +92,7 @@ def copy_cells(source_sheet, target_sheet,idx):
         else:
             # linhas em branco
             copy_row(r+delta,row, source_sheet, target_sheet, fill=False)
-        #if r>10: break
+        if r>20: break #<----------------------------------------------------------------------  remover
     print('delta: ',delta)
     return rows_resp
 
@@ -113,7 +110,7 @@ def copy_first_row(r,row, source_sheet, target_sheet):
                 target_cell.border = copy(source_cell.border)
                 target_cell.fill = copy(source_cell.fill)
                 target_cell.number_format = copy(source_cell.number_format)
-                target_cell.protection = copy(source_cell.protection)
+                #target_cell.protection = copy(source_cell.protection)
                 target_cell.alignment = copy(source_cell.alignment)
             if not isinstance(source_cell, openpyxl.cell.ReadOnlyCell) and source_cell.hyperlink:
                 target_cell._hyperlink = copy(source_cell.hyperlink)
@@ -131,14 +128,14 @@ def copy_row(r,row, source_sheet, target_sheet, fill):
             if isinstance(source_cell, openpyxl.cell.read_only.EmptyCell):
                 continue
             target_cell = target_sheet.cell(column=c+1, row=r+1) # indices am cell começam em 1 ...!!!
-            target_cell._value = source_cell._value
-            target_cell.data_type = source_cell.data_type
-            if fill: 
+            if fill:
+                target_cell._value = source_cell._value
+                target_cell.data_type = source_cell.data_type
                 target_cell.font = copy(red_cell.font)
                 target_cell.border = copy(red_cell.border)
                 target_cell.fill = copy(red_cell.fill)
                 target_cell.number_format = copy(red_cell.number_format)
-                target_cell.protection = copy(red_cell.protection)
+                #target_cell.protection = copy(red_cell.protection)
                 target_cell.alignment = copy(red_cell.alignment)
             if not isinstance(source_cell, openpyxl.cell.ReadOnlyCell) and source_cell.hyperlink:
                 target_cell._hyperlink = copy(source_cell.hyperlink)
@@ -160,7 +157,7 @@ def partial_copy_row(r,row, source_sheet, target_sheet, columns_to_copy,coluna_v
             target_cell.border = copy(red_cell.border)
             target_cell.fill = copy(red_cell.fill)
             target_cell.number_format = copy(red_cell.number_format)
-            target_cell.protection = copy(red_cell.protection)
+            #target_cell.protection = copy(red_cell.protection)
             target_cell.alignment = copy(red_cell.alignment)
         if headers[c] in columns_to_copy:  
             if isinstance(source_cell, openpyxl.cell.read_only.EmptyCell):
@@ -173,24 +170,25 @@ def partial_copy_row(r,row, source_sheet, target_sheet, columns_to_copy,coluna_v
                 target_cell.border = copy(source_cell.border)
                 target_cell.fill = copy(source_cell.fill)
                 target_cell.number_format = copy(source_cell.number_format)
-                target_cell.protection = copy(source_cell.protection)
+                #target_cell.protection = copy(source_cell.protection)
                 target_cell.alignment = copy(source_cell.alignment)
             if not isinstance(source_cell, openpyxl.cell.ReadOnlyCell) and source_cell.hyperlink:
                 target_cell._hyperlink = copy(source_cell.hyperlink)
             if not isinstance(source_cell, openpyxl.cell.ReadOnlyCell) and source_cell.comment:
                 target_cell.comment = copy(source_cell.comment)
-        if headers[c]==coluna_validacao:
+        if headers[c]==coluna_validacao: # drop-down menus
             if isinstance(source_cell, openpyxl.cell.read_only.EmptyCell):
                 continue
             target_cell = target_sheet.cell(column=c+1, row=r+1) # indices em cell começam em 1 ...!!!
             target_cell._value = VALIDATION_VALUE
             target_cell.data_type='s'
+            #target_cell.protection = Protection(locked=False)
 
 
 ########################################################################################################
 # number max docentes a inserir por UC e informação a passar
 # output
-N=10 # número máximo docentes
+N=15 # número máximo docentes
 VALIDATION_VALUE='Inserir docente'
 # worksheets de input
 ws_name_preencher='DSD (para preencher)'
@@ -228,6 +226,10 @@ for name in [ws_name_preencher,ws_name_info,ws_name_docentes]:
     print(source_sheet.max_row)
     print(source_sheet.max_column)
 
+# conteudo worksheet docentes
+ws=wb_source[ws_name_docentes]
+print([c.value for c in next(ws.iter_rows(min_row=1, max_row=1))])
+
 ########################################################### criar workbook (target)
 # target work book and sheet
 wb_target = openpyxl.Workbook()
@@ -241,6 +243,16 @@ headers = [c.value for c in next(source_sheet.iter_rows(min_row=1, max_row=1))]
 idx=headers.index(column_key)
 idxred=headers.index(colunas_red[-1])
 red_cell=source_sheet.cell(1,idxred)
+colunas_horas_a_preencher=[]
+acc=[]
+for h in headers:
+    acc.append(h)
+    if column_preencher_first in acc and column_preencher_last not in acc:
+        colunas_horas_a_preencher.append(h)
+colunas_horas_a_preencher.append(column_preencher_last)
+
+print(colunas_horas_a_preencher)
+
 
 # Criar cópia
 rows_resp=copy_sheet(source_sheet, target_sheet,idx)
@@ -253,6 +265,11 @@ mylist = [c.value for c in val_sheet['A']]
 mylist = [i for i in mylist if i is not None]
 nomes_docentes=list(map(lambda x:x.strip(),mylist)) # eliminar \n
 
+#docentes a remover
+nomes_docentes.remove('Adelino Mendes da Silva Paiva')
+nomes_docentes.remove('João António Ribeiro Ferreira Nunes')
+len(nomes_docentes)
+
 # escrever docentes em coluna coldoc e outras 2 colunas adicionais
 for i in range(len(nomes_docentes)):
     # horas semanais
@@ -263,7 +280,7 @@ for i in range(len(nomes_docentes)):
         target_cell.border = copy(red_cell.border)
         target_cell.fill = copy(red_cell.fill)
         target_cell.number_format = copy(red_cell.number_format)
-        target_cell.protection = copy(red_cell.protection)
+        #target_cell.protection = copy(red_cell.protection)
         target_cell.alignment = copy(red_cell.alignment)
     else:
         target_cell.value=''
@@ -277,7 +294,7 @@ for i in range(len(nomes_docentes)):
         target_cell.border = copy(red_cell.border)
         target_cell.fill = copy(red_cell.fill)
         target_cell.number_format = copy(red_cell.number_format)
-        target_cell.protection = copy(red_cell.protection)
+        #target_cell.protection = copy(red_cell.protection)
         target_cell.alignment = copy(red_cell.alignment)
     else:
         target_cell.value=''
@@ -291,7 +308,7 @@ for i in range(len(nomes_docentes)):
         target_cell.border = copy(red_cell.border)
         target_cell.fill = copy(red_cell.fill)
         target_cell.number_format = copy(red_cell.number_format)
-        target_cell.protection = copy(red_cell.protection)
+        #target_cell.protection = copy(red_cell.protection)
         target_cell.alignment = copy(red_cell.alignment)
     else: 
         target_cell.value=nomes_docentes[i]
@@ -304,23 +321,58 @@ for i in range(len(nomes_docentes)):
 #str1='"Vítor Manuel Delgado Alves,Docente a atribuir"' # funciona!
 #str1='"Susete Maria Gonçalves Marques,Teresa de Jesus da Silva Matos Nolasco Crespo,Teresa Maria Gonçalves Quilhó Marques dos Santos,Teresa Paula Gonçalves Cruz (EU),Vítor Manuel Delgado Alves,Docente a atribuir"'
 #data_val = DataValidation(type='list',formula1=str1) #, allow_blank=False)
-data_val = DataValidation(type='list',formula1='={}{}:{}{}'.format(coldoc,'$2',coldoc,'$'+str(1+len(nomes_docentes)))) #, allow_blank=False)
+data_val = DataValidation(type='list',formula1='={}{}:{}{}'.format(coldoc,'$2',coldoc,'$'+str(1+len(nomes_docentes))), allow_blank=True) #, allow_blank=False)
 
 # criar validação em target_sheet
 target_sheet.add_data_validation(data_val)
 
-# depois de fazer a cópia:
+# abrid DSD_v1
+if DSDv1: 
+    wb1 = openpyxl.load_workbook(fnDSDv1) #, data_only=True) # with data_only, it will only read values
+    names1=wb1.sheetnames
+    # test if sheet names are right
+    print(names1)
+    for name in [ws_name_preencher,ws_name_info]:
+        if name not in names1:
+            stop
+            ws1=wb1[name]
+            print(ws1.max_row)
+            print(ws1.max_column)
 
-# indicar as células em que ficam os drop-down menus
+
+# depois de fazer a cópia de source_sheet para target_sheet:
+# indicar as células em que ficam os drop-down menus e desproteger as células a preencher
+# if DSDv1: copiar valores das células de DSDv_1 para DSD_v2 (target sheet):
 if True:
     # colocar drop-down menu para colunas em coluna_validacao (que têm valor VALIDATION_VALUE='VAL')
-    idxval=headers.index(coluna_validacao)
+    # desproteger células de coluna_validacao e de colunas_horas_a_preencher
+    if DSDv1:
+        ws1=wb1[ws_name_preencher]
+    idxval=headers.index(coluna_validacao) # where drop-manu will be
     for k in range(target_sheet.max_row):
-        c=target_sheet.cell(k+1,idxval+1)
-        if c.value==VALIDATION_VALUE:
-            data_val.add(c)
-        #if k>5: break
-#data_val.add(target_sheet["E5"]) #funciona!
+        ct=target_sheet.cell(k+1,idxval+1)
+        if ct.value==VALIDATION_VALUE: # originalmente é sempre assim, independentemente de DSDv1
+            if False: #DSDv1:
+                c1=ws1.cell(k+1,idxval+1) # mesma célula
+                if not c1.protection.locked and c1.value is not None and c1.value != '':
+                    ct.value=c1.value
+                else: 
+                    data_val.add(ct)
+            else:
+                data_val.add(ct)
+            ct.protection = Protection(locked=False)
+            for colpreencher in colunas_horas_a_preencher:
+                idx=headers.index(colpreencher)
+                dt=target_sheet.cell(k+1,idx+1)
+                if False: #DSDv1:
+                    d1=ws1.cell(k+1,idx+1) # mesma célula
+                    if not d1.protection.locked and d1.value is not None and d1.value != '':
+                        dt.value=d1.value
+                dt.protection = Protection(locked=False)
+
+
+#print(d1.value)
+wb1.close
 
 # ajustar tamanho das colunas
 target_sheet.column_dimensions[coldoc].width = len('Maria Cristina da Fonseca Ataide Castel-Branco Alarcão Júdice')
@@ -345,7 +397,7 @@ for r, row in enumerate(source_sheet.iter_rows()):
         target_cell.border = copy(source_cell.border)
         target_cell.fill = copy(source_cell.fill)
         target_cell.number_format = copy(source_cell.number_format)
-        target_cell.protection = copy(source_cell.protection)
+        #target_cell.protection = copy(source_cell.protection)
         target_cell.alignment = copy(source_cell.alignment)
         if not isinstance(source_cell, openpyxl.cell.ReadOnlyCell) and source_cell.hyperlink:
             target_cell._hyperlink = copy(source_cell.hyperlink)
@@ -358,20 +410,20 @@ copyColumn(info_sheet,column_codigo_UC_info,'AY','numeric')
 copyColumn(info_sheet,column_total_horas_info,'AZ','numeric')
 # column_total_horas
 
-##################################################################### criar fórmulas em ws_name_preencher
-'''
-column_codigo_UC_preencher='Código UC'
-column_horas_em_falta_preencher='Horas em falta na UC'
-column_key='Inserir docentes na UC ' #'docentes ' # cuidado: tem um espaço a mais
-coluna_validacao=column_key
-column_somatorio_preencher
-coldoc='AK'
-# ws info
-column_total_horas_info='Total Horas previsto '
-column_codigo_UC_info='Código UC'
-column_preencher_first='Total Horas Teóricas'
-column_preencher_last='Total Horas  Outras'
-'''
+# ##################################################################### criar fórmulas em ws_name_preencher
+# '''
+# column_codigo_UC_preencher='Código UC'
+# column_horas_em_falta_preencher='Horas em falta na UC'
+# column_key='Inserir docentes na UC ' #'docentes ' # cuidado: tem um espaço a mais
+# coluna_validacao=column_key
+# column_somatorio_preencher
+# coldoc='AK'
+# # ws info
+# column_total_horas_info='Total Horas previsto '
+# column_codigo_UC_info='Código UC'
+# column_preencher_first='Total Horas Teóricas'
+# column_preencher_last='Total Horas  Outras'
+# '''
 
 for r in rows_resp:
     d=target_sheet.cell(r+1,column_index_from_string(nomeColuna2letter(target_sheet, column_somatorio_preencher)))
@@ -387,7 +439,7 @@ for r in rows_resp:
 
 
 #copyColumn(target_sheet,column_somatorio_preencher,'AZ')
-for i in range(target_sheet.max_row):
+for i in range(len(nomes_docentes)): #target_sheet.max_row):
     if i>0:
         g=target_sheet.cell(i+1,column_index_from_string(coldoc)-1)
         g.value="=SUMIF({}:{},{}{},{}:{})".format(nomeColuna2letter(target_sheet, column_key),nomeColuna2letter(target_sheet, column_key),coldoc,i+1,nomeColuna2letter(target_sheet, column_somatorio_preencher),nomeColuna2letter(target_sheet, column_somatorio_preencher))
@@ -408,6 +460,12 @@ for i in range(target_sheet.max_row):
 if 'Sheet' in wb_target.sheetnames:  # remove default sheet
     wb_target.remove(wb_target['Sheet'])
 
+# proteger
+target_sheet.protection.sheet = True
+target_sheet.protection.password = 'password'
+info_sheet.protection.sheet = True
+info_sheet.protection.password = 'password'
+
 # gravar para ficheiro
 wb_target.save(fnOut)
 
@@ -416,5 +474,6 @@ wb_target.close
 
 # what is this?
 # isinstance(c, openpyxl.cell.read_only.EmptyCell)
+
 
 
