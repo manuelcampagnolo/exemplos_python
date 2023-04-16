@@ -349,6 +349,7 @@ if DSDv1:
 # indicar as células em que ficam os drop-down menus e desproteger as células a preencher
 # if DSDv1: copiar valores das células de DSDv_1 para DSD_v2 (target sheet):
 if True:
+    # headers = [c.value for c in next(source_sheet.iter_rows(min_row=1, max_row=1))]
     # colocar drop-down menu para colunas em coluna_validacao (que têm valor VALIDATION_VALUE='VAL')
     # desproteger células de coluna_validacao e de colunas_horas_a_preencher
     if DSDv1:
@@ -356,15 +357,16 @@ if True:
     idxval=headers.index(coluna_validacao) # where drop-manu will be
     for k in range(target_sheet.max_row):
         ct=target_sheet.cell(k+1,idxval+1)
-        if ct.value==VALIDATION_VALUE: # originalmente é sempre assim, independentemente de DSDv1
-            if False: #DSDv1:
+        if ct.value==VALIDATION_VALUE: # originalmente é sempre assim,não depende de DSDv1
+            data_val.add(ct)
+            if DSDv1:
                 c1=ws1.cell(k+1,idxval+1) # mesma célula
                 if not c1.protection.locked and c1.value is not None and c1.value != '':
-                    ct.value=c1.value
-                else: 
-                    data_val.add(ct)
-            else:
-                data_val.add(ct)
+                     ct.value=c1.value
+            #     else: 
+            #         data_val.add(ct)
+            # else:
+            #     data_val.add(ct)
             ct.protection = Protection(locked=False)
             for colpreencher in colunas_horas_a_preencher:
                 idx=headers.index(colpreencher)
@@ -375,7 +377,13 @@ if True:
                         dt.value=d1.value
                 dt.protection = Protection(locked=False)
 
-
+ct=target_sheet['E3']
+data_val.add(ct)
+ct.value
+c1=ws1['E3']
+c1.value
+ct.value=c1.value
+ct.value
 #print(d1.value)
 wb1.close
 
