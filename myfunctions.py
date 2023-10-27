@@ -28,9 +28,9 @@ def  mysqrt(x):
 # McLaurin approximation for cosine
 # Input: angle in degrees
 def mycos(x):
+    x=x%360
     x=deg2rad(x)
     n=9
-    x = x % (2 * pi)
     cos = 1
     fact = 2
     for i in range(1, n + 1):
@@ -51,27 +51,15 @@ def mysin(x):
 
 #print(mysin(30),mysin(45),mysin(-45), mysin(-135))
 
-# From fundamental trigonometric equality
-def mysqsin(x):
-    return 1-mycos(x)**2
-
-# Composition of functions above
-# def mysin(x):
-#     x=x%360
-#     if 0 <= x <= 180: 
-#         return mysqrt(mysqsin(x))
-#     else:
-#         return -1*mysqrt(mysqsin(x))
-
 # Arcsin using bissection method
 # input: number
 # output: angle in decimal degrees
 def myarcsin(x):
     if not -1 <= x <= 1:
         return 'NaN'
-    tol=0.00001
-    min=-pi/2
-    max=pi/2
+    tol=10**(-13)
+    min= -90
+    max= 90
     mid=(min+max)/2
     while abs(mysin(mid)-x)>tol:
         if mysin(mid)>x:
@@ -79,7 +67,7 @@ def myarcsin(x):
         else:
             min=mid
         mid=(min+max)/2
-    return rad2deg(mid)
+    return mid
 
 # input: string (prompt to user), float (minimum value for input), float (maximum value for input)
 # output: float (user's provided value between minimum and maximum)
