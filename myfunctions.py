@@ -119,8 +119,10 @@ def mysin(x):
 
 def myarcsin(y):
     N=100
-    if y<-1 or y>1:
-        return 'NaN'
+    if y <= -1:
+        return -90
+    if y >= 1:
+        return 90
     
     def f(x):
         return mysin(x)-y
