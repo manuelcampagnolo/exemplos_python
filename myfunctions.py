@@ -6,7 +6,7 @@ def deg2rad(x):
 # converts radians to decimal degrees
 def rad2deg(x):
     return 180*x/pi
-
+""" 
 def mysqrt(y):
     N=100
     if y==0:
@@ -70,32 +70,33 @@ def mysqrt(y):
             return None
     return a_n - f(a_n)*(b_n - a_n)/(f(b_n) - f(a_n))
 
-#print(sqrt_secant(0.0001,100))
+#print(sqrt_secant(0.0001,100)) """
 
-# # Square root function using bissection method
-# # Input: number
-# def  mysqrt(x):
-#     if x<0:
-#         return 'NaN'
-#     else:
-#         tol=10**(-10)
-#         min=0
-#         max=x+1
-#         mid=(min+max)/2
-#         while abs(mid*mid-x)>tol:
-#             if mid*mid>x:
-#                 max=mid
-#             else:
-#                 min=mid
-#             mid=(min+max)/2
-#         return mid
+# Square root function using bissection method
+# Input: number
+def  mysqrt(x):
+    tol=10**-10
+    if x<0:
+        return 0
+    else:
+        min=0
+        max=x+1
+        mid=(min+max)/2
+        while abs(mid*mid-x)>tol:
+            if mid*mid>x:
+                max=mid
+            else:
+                min=mid
+            mid=(min+max)/2
+        return mid
 
 # McLaurin approximation for cosine
 # Input: angle in degrees
 def mycos(x):
     x=x%360
+    Q=x//90
     x=deg2rad(x)
-    n=9
+    n=12
     cos = 1
     fact = 2
     for i in range(1, n + 1):
@@ -106,7 +107,7 @@ def mycos(x):
 def mysin(x):
     x=x%360
     x=deg2rad(x)
-    n=9
+    n=12
     sin = x
     fact= 3*2
     for i in range(1, n + 1):
@@ -116,7 +117,7 @@ def mysin(x):
 
 #print(mysin(30),mysin(45),mysin(-45), mysin(-135))
 
-
+""" 
 def myarcsin(y):
     N=100
     if y <= -1:
@@ -179,26 +180,28 @@ def myarcsin(y):
             print("Secant method fails.")
             return None
     return a_n - f(a_n)*(b_n - a_n)/(f(b_n) - f(a_n))
-
+ """
 #print(arcsin_secant(0.5,100), arcsin_secant(-0.5,100))
 
-# # Arcsin using bissection method
-# # input: number
-# # output: angle in decimal degrees
-# def myarcsin(x):
-#     if not -1 <= x <= 1:
-#         return 'NaN'
-#     tol=10**(-13)
-#     min= -90
-#     max= 90
-#     mid=(min+max)/2
-#     while abs(mysin(mid)-x)>tol:
-#         if mysin(mid)>x:
-#             max=mid
-#         else:
-#             min=mid
-#         mid=(min+max)/2
-#     return mid
+# Arcsin using bissection method
+# input: number
+# output: angle in decimal degrees
+def myarcsin(x):
+    tol=10**-10
+    if x <= -1:
+        return -90
+    if x >= 1:
+        return 90
+    min= -90
+    max= 90
+    mid=(min+max)/2
+    while abs(mysin(mid)-x)>tol:
+        if mysin(mid)>x:
+            max=mid
+        else:
+            min=mid
+        mid=(min+max)/2
+    return mid
 
 # input: string (prompt to user), float (minimum value for input), float (maximum value for input)
 # output: float (user's provided value between minimum and maximum)

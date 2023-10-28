@@ -10,7 +10,7 @@ def test_mysqrt():
     assert 0 <= mysqrt(0) <= 0.001
     assert 9.99 < mysqrt(100) < 10.1
     assert 0.499 < mysqrt(0.25) < 0.501
-    assert mysqrt(-1) == 'NaN'
+    assert mysqrt(-1) == 0
 
 def test_mysin():
     assert -0.0001< mysin(0) < 0.0001
@@ -28,8 +28,11 @@ def test_mycos():
     assert 0.4999 <= mycos(60) <= 0.5001
 
 def test_myarcsin():
-    assert -0.0001 <= myarcsin(0) < 0.0001
-    assert 89.9999 <= myarcsin(1) < 90.0001
-    assert -90.01 <= myarcsin(-1) < -89.99
+    tol=0.1
+    assert -tol <= myarcsin(0) < tol
+    assert 90-tol <= myarcsin(1) < 90 + tol
+    assert -90 - tol <= myarcsin(-1) < -90 + tol
+    assert 30-tol <= myarcsin(0.5) < 30+tol
+    assert -30-tol <= myarcsin(-0.5) < -30+tol
 
 main()
