@@ -1,4 +1,4 @@
-from myfunctions import mysqrt, mycos, myarcsin, mysin, get_decimal
+from myfunctions import mysqrt, mycos, myarcsin, mysin
 
 def main():
     test_mysqrt()

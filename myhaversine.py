@@ -1,12 +1,11 @@
 from myfunctions import mysqrt, mycos, myarcsin, mysin, get_decimal,deg2rad
-from haversine import haversine
 
 def main():
     lat1=get_decimal('Latitude 1st point in decimal degrees',-90,90)
     lon1=get_decimal('Longitude 1st point in decimal degrees',-180,180)
     lat2=get_decimal('Latitude 2nd point in decimal degrees',-90,90)
     lon2=get_decimal('Longitude 2nd point in decimal degrees',-180,180)
-    print(f"the distance between points is {myhaversine((lat1,lon1),(lat2,lon2))} km")
+    print(f"The distance between points is {myhaversine((lat1,lon1),(lat2,lon2))} km")
 
 def myhaversine(p1,p2):
     R=6371
@@ -19,15 +18,6 @@ def myhaversine(p1,p2):
     H=mysqrt(C)
     H=(-1<H<1)*H+(H<=-1)*(-1)+(H>=1)*1 # prevents H<-1 or H>1
     return 2*R*deg2rad(myarcsin(H))
-
-lyon = (45.7597, 4.8422) # (lat, lon)
-paris = (48.8567, 2.3508)
-santiago=( -33.45, -70.67)
-prague= (50.08, 14.42)
-
-print(haversine(santiago, prague),myhaversine(santiago, prague))
-print(haversine(lyon, paris),myhaversine(lyon, paris))
     
-
-
-
+if __name__ == "__main__":
+    main()
